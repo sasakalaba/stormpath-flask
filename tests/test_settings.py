@@ -20,8 +20,155 @@ class TestInitSettings(StormpathTestCase):
 
         # Ensure a couple of settings exist that we didn't explicitly specify
         # anywhere.
-        self.assertEqual(self.app.config['STORMPATH_ENABLE_FACEBOOK'], False)
-        self.assertEqual(self.app.config['STORMPATH_ENABLE_GIVEN_NAME'], True)
+        self.assertEqual(self.app.config['stormpath']['STORMPATH_WEB_REGISTER_ENABLED'], True)
+        self.assertEqual(self.app.config['stormpath']['STORMPATH_WEB_LOGIN_ENABLED'], True)
+
+    def test_helpers(self):
+        init_settings(self.app.config)
+        settings = self.app.config['stormpath']
+
+        self.assertEqual(settings._from_camel('givenName'), 'GIVEN_NAME')
+        self.assertEqual(settings._from_camel('given_name'), 'GIVEN_NAME')
+        self.assertNotEqual(settings._from_camel('GivenName'), 'GIVEN_NAME')
+
+        settings.store = {
+            'application': {
+                'name': 'StormpathApp'
+            }
+        }
+
+        # test key search
+        node, child = settings.__search__(
+            settings.store, 'STORMPATH_APPLICATION_NAME', 'STORMPATH')
+        self.assertEqual(node, settings.store['application'])
+        self.assertEqual(node[child], settings.store['application']['name'])
+
+        # key node matching with no direct mapping
+        node, child = settings.__nodematch__('STORMPATH_APPLICATION_NAME')
+        self.assertEqual(node, settings.store['application'])
+        self.assertEqual(node[child], settings.store['application']['name'])
+
+        # key node matching with direct mapping
+        node, child = settings.__nodematch__('STORMPATH_APPLICATION')
+        self.assertEqual(node, settings.store['application'])
+        self.assertEqual(node[child], settings.store['application']['name'])
+
+    def test_settings_init(self):
+        init_settings(self.app.config)
+        settings = self.app.config['stormpath']
+
+        # flattened settings with direct mapping
+        settings['STORMPATH_APPLICATION'] = 'StormpathApp'
+        self.assertEqual(settings.store['application']['name'], 'StormpathApp')
+        self.assertEqual(settings.get('STORMPATH_APPLICATION'), 'StormpathApp')
+        self.assertEqual(settings['STORMPATH_APPLICATION'], 'StormpathApp')
+        self.assertEqual(settings.get('application')['name'], 'StormpathApp')
+        self.assertEqual(settings['application']['name'], 'StormpathApp')
+
+    def test_set(self):
+        settings = StormpathSettings()
+        # flattened setting wasn't defined during init
+        with self.assertRaises(KeyError):
+            settings['STORMPATH_WEB_SETTING'] = 'StormWebSetting'
+
+        # flattened setting defined during init
+        settings = StormpathSettings(web={'setting': 'StormSetting'})
+        settings['STORMPATH_WEB_SETTING'] = 'StormWebSetting'
+        self.assertEqual(
+            settings['web']['setting'], 'StormWebSetting')
+        # dict setting defined during init
+        settings = StormpathSettings(web={'setting': 'StormSetting'})
+        settings['web']['setting'] = 'StormWebSetting'
+        self.assertEqual(
+            settings['web']['setting'], 'StormWebSetting')
+
+        # overriding flattened setting
+        settings = StormpathSettings(web={'setting': 'StormSetting'})
+        settings['STORMPATH_WEB'] = 'StormWebSetting'
+        self.assertEqual(settings['web'], 'StormWebSetting')
+        # overriding dict setting
+        settings = StormpathSettings(web={'setting': 'StormSetting'})
+        settings['web'] = 'StormWebSetting'
+        self.assertEqual(settings['web'], 'StormWebSetting')
+
+    def test_get(self):
+        init_settings(self.app.config)
+        settings = self.app.config['stormpath']
+
+        register_setting = {
+            'enabled': True,
+            'form': {
+                'fields': {
+                    'givenName': {
+                        'enabled': True
+                    }
+                }
+            }
+        }
+
+        # flattened setting without mappings
+        settings['STORMPATH_WEB_REGISTER'] = register_setting
+        self.assertEqual(
+            settings.get('STORMPATH_WEB_REGISTER'), register_setting)
+        self.assertEqual(settings['STORMPATH_WEB_REGISTER'], register_setting)
+        self.assertEqual(settings.get('web')['register'], register_setting)
+        self.assertEqual(settings['web']['register'], register_setting)
+
+        # dict setting without mappings
+        settings['web']['register'] = register_setting
+        self.assertEqual(
+            settings.get('STORMPATH_WEB_REGISTER'), register_setting)
+        self.assertEqual(settings['STORMPATH_WEB_REGISTER'], register_setting)
+        self.assertEqual(settings.get('web')['register'], register_setting)
+        self.assertEqual(settings['web']['register'], register_setting)
+
+    def test_del(self):
+        init_settings(self.app.config)
+        settings = self.app.config['stormpath']
+        register_setting = {
+            'enabled': True,
+            'form': {
+                'fields': {
+                    'givenName': {
+                        'enabled': True
+                    }
+                }
+            }
+        }
+        settings['STORMPATH_WEB_REGISTER'] = register_setting
+        del settings['web']['register']
+        with self.assertRaises(KeyError):
+            settings['STORMPATH_WEB_REGISTER']
+
+    def test_camel_case(self):
+        web_settings = {
+            'register': {
+                'enabled': True,
+                'form': {
+                    'fields': {
+                        'givenName': {
+                            'enabled': True
+                        }
+                    }
+                }
+            }
+        }
+
+        settings = StormpathSettings(web=web_settings)
+        self.assertTrue(
+            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        self.assertTrue(
+            settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
+        settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'] = False
+        self.assertFalse(
+            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        self.assertFalse(
+            settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
+        settings['web']['register']['form']['fields']['givenName']['enabled'] = True
+        self.assertTrue(
+            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        self.assertTrue(
+            settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
 
 class TestCheckSettings(StormpathTestCase):
