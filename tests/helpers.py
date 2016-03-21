@@ -60,8 +60,8 @@ def bootstrap_client():
     :returns: A new Stormpath Client, fully initialized.
     """
     return Client(
-        id = environ.get('STORMPATH_API_KEY_ID'),
-        secret = environ.get('STORMPATH_API_KEY_SECRET'),
+        id=environ.get('STORMPATH_API_KEY_ID'),
+        secret=environ.get('STORMPATH_API_KEY_SECRET'),
     )
 
 

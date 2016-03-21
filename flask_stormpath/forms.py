@@ -1,12 +1,41 @@
 """Helper forms which make handling common operations simpler."""
 
-
+from flask import current_app
 from flask.ext.wtf import Form
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, ValidationError
+from stormpath.resources import Resource
 
 
-class RegistrationForm(Form):
+class StormpathForm(Form):
+    def __init__(self, config, *args, **kwargs):
+        super(StormpathForm, self).__init__(*args, **kwargs)
+        field_list = config['fields']
+        field_order = config['fieldOrder']
+
+        for field in field_order:
+            if field_list[field]['enabled']:
+                validators = []
+                if field_list[field]['required']:
+                    validators.append(InputRequired())
+                if field_list[field]['type'] == 'password':
+                    field_class = PasswordField
+                else:
+                    field_class = StringField
+                if 'label' in field_list[field] and isinstance(
+                        field_list[field]['label'], str):
+                    label = field_list[field]['label']
+                else:
+                    label = ''
+                placeholder = field_list[field]['placeholder']
+                setattr(
+                    self.__class__, Resource.from_camel_case(field),
+                    field_class(
+                        label, validators=validators,
+                        render_kw={"placeholder": placeholder}))
+
+
+class RegistrationForm(StormpathForm):
     """
     Register a new user.
 
@@ -23,15 +52,12 @@ class RegistrationForm(Form):
         through Javascript) we don't need to have a form for registering users
         that way.
     """
-    username = StringField('Username')
-    given_name = StringField('First Name')
-    middle_name = StringField('Middle Name')
-    surname = StringField('Last Name')
-    email = StringField('Email', validators=[InputRequired()])
-    password = PasswordField('Password', validators=[InputRequired()])
+    def __init__(self, *args, **kwargs):
+        form_config = current_app.config['stormpath']['web']['register']['form']
+        super(RegistrationForm, self).__init__(form_config, *args, **kwargs)
 
 
-class LoginForm(Form):
+class LoginForm(StormpathForm):
     """
     Log in an existing user.
 
@@ -48,8 +74,9 @@ class LoginForm(Form):
         Since social login stuff is handled separately (login happens through
         Javascript) we don't need to have a form for logging in users that way.
     """
-    login = StringField('Login', validators=[InputRequired()])
-    password = PasswordField('Password', validators=[InputRequired()])
+    def __init__(self, *args, **kwargs):
+        form_config = current_app.config['stormpath']['web']['login']['form']
+        super(LoginForm, self).__init__(form_config, *args, **kwargs)
 
 
 class ForgotPasswordForm(Form):

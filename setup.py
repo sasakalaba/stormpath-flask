@@ -37,20 +37,20 @@ class RunTests(Command):
 
 
 setup(
-    name = 'Flask-Stormpath',
-    version = '0.4.4',
-    url = 'https://github.com/stormpath/stormpath-flask',
-    license = 'Apache',
-    author = 'Stormpath, Inc.',
-    author_email = 'python@stormpath.com',
-    description = 'Simple and secure user authentication for Flask via Stormpath.',
-    long_description = __doc__,
-    packages = ['flask_stormpath'],
-    cmdclass = {'test': RunTests},
-    zip_safe = False,
-    include_package_data = True,
-    platforms = 'any',
-    install_requires = [
+    name='Flask-Stormpath',
+    version='0.4.4',
+    url='https://github.com/stormpath/stormpath-flask',
+    license='Apache',
+    author='Stormpath, Inc.',
+    author_email='python@stormpath.com',
+    description='Simple and secure user authentication for Flask via Stormpath.',
+    long_description=__doc__,
+    packages=['flask_stormpath'],
+    cmdclass={'test': RunTests},
+    zip_saf=False,
+    include_package_data=True,
+    platforms='any',
+    install_requires=[
         'Flask>=0.9.0',
         'Flask-Login==0.2.9',
         'Flask-WTF>=0.9.5',
@@ -62,7 +62,7 @@ setup(
     dependency_links=[
         'git+git://github.com/pythonforfacebook/facebook-sdk.git@e65d06158e48388b3932563f1483ca77065951b3#egg=facebook-sdk-1.0.0-alpha',
     ],
-    classifiers = [
+    classifiers=[
         'Environment :: Web Environment',
         'Framework :: Flask',
         'Intended Audience :: Developers',

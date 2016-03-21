@@ -46,8 +46,10 @@ def register():
         # flashing error messages if required.
         data = form.data
         for field in data.keys():
-            if current_app.config['STORMPATH_ENABLE_%s' % field.upper()]:
-                if current_app.config['STORMPATH_REQUIRE_%s' % field.upper()] and not data[field]:
+            if current_app.config['stormpath']['web']['register']['form'][
+                    'fields']['%s' % field.upper()]['enabled']:
+                if current_app.config['stormpath']['web']['register']['form'][
+                        '%s' % field.upper()]['required'] and not data[field]:
                     fail = True
 
                     # Manually override the terms for first / last name to make
@@ -80,23 +82,24 @@ def register():
                 # If we're able to successfully create the user's account,
                 # we'll log the user in (creating a secure session using
                 # Flask-Login), then redirect the user to the
-                # STORMPATH_REDIRECT_URL setting.
+                # Stormpath login nextUri setting.
                 login_user(account, remember=True)
 
-                if 'STORMPATH_REGISTRATION_REDIRECT_URL'\
-                        in current_app.config:
+                redirect_url = current_app.config[
+                    'stormpath']['web']['register']['nextUri']
+                if not redirect_url:
                     redirect_url = current_app.config[
-                        'STORMPATH_REGISTRATION_REDIRECT_URL']
+                        'stormpath']['web']['login']['nextUri']
                 else:
-                    redirect_url = current_app.config['STORMPATH_REDIRECT_URL']
+                    redirect_url = '/'
                 return redirect(redirect_url)
 
             except StormpathError as err:
                 flash(err.message.get('message'))
 
     return render_template(
-        current_app.config['STORMPATH_REGISTRATION_TEMPLATE'],
-        form = form,
+        current_app.config['stormpath']['web']['register']['template'],
+        form=form,
     )
 
 
@@ -124,17 +127,19 @@ def login():
             # If we're able to successfully retrieve the user's account,
             # we'll log the user in (creating a secure session using
             # Flask-Login), then redirect the user to the ?next=<url>
-            # query parameter, or the STORMPATH_REDIRECT_URL setting.
+            # query parameter, or the Stormpath login nextUri setting.
             login_user(account, remember=True)
 
-            return redirect(request.args.get('next') or current_app.config['STORMPATH_REDIRECT_URL'])
+            return redirect(
+                request.args.get('next') or
+                current_app.config['stormpath']['web']['login']['nextUri'])
 
         except StormpathError as err:
             flash(err.message.get('message'))
 
     return render_template(
-        current_app.config['STORMPATH_LOGIN_TEMPLATE'],
-        form = form,
+        current_app.config['stormpath']['web']['login']['template'],
+        form=form,
     )
 
 
@@ -165,7 +170,7 @@ def forgot():
             # their inbox to complete the password reset process.
             return render_template(
                 current_app.config['STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE'],
-                user = account,
+                user=account,
             )
         except StormpathError as err:
             # If the error message contains 'https', it means something failed

@@ -6,7 +6,8 @@ from os import close, environ, remove, write
 from tempfile import mkstemp
 
 from flask.ext.stormpath.errors import ConfigurationError
-from flask.ext.stormpath.settings import check_settings, init_settings
+from flask.ext.stormpath.settings import (
+    StormpathSettings, check_settings, init_settings)
 
 from .helpers import StormpathTestCase
 
