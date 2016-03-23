@@ -97,7 +97,8 @@ class ChangePasswordForm(Form):
     before making a change.
     """
     password = PasswordField('Password', validators=[InputRequired()])
-    password_again = PasswordField('Password (again)', validators=[InputRequired()])
+    password_again = PasswordField(
+        'Password (again)', validators=[InputRequired()])
 
     def validate_password_again(self, field):
         """

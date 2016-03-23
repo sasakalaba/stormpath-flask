@@ -22,6 +22,7 @@ __license__ = 'Apache'
 __copyright__ = '(c) 2012 - 2015 Stormpath, Inc.'
 
 import os
+from datetime import timedelta
 
 from flask import (
     Blueprint,
@@ -38,7 +39,6 @@ from flask.ext.login import (
     login_user,
     logout_user,
 )
-
 from stormpath.client import Client
 from stormpath.error import Error as StormpathError
 # FIXME: cannot install stormpath_config via pip
@@ -57,6 +57,7 @@ from werkzeug.local import LocalProxy
 from .context_processors import user_context_processor
 from .models import User
 from .settings import StormpathSettings
+from .errors import ConfigurationError
 from .views import (
     google_login,
     facebook_login,
@@ -162,21 +163,16 @@ class StormpathManager(object):
         config['stormpath'] = StormpathSettings(config_loader.load())
 
         # Which fields should be displayed when registering new users?
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
-        # config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
-        # config.setdefault('STORMPATH_ENABLE_EMAIL', True)  # If this is diabled,
+        config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
+        config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
+        config.setdefault('STORMPATH_ENABLE_EMAIL', True)  # If this is diabled,
                                                            # only social login can
                                                            # be used.
 
         # Configure URL mappings.  These URL mappings control which URLs will be
         # used by Flask-Stormpath views.
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
-        # config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
-
-        # After a successful login, where should users be redirected?
-        config.setdefault('STORMPATH_REDIRECT_URL', '/')
+        config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
+        config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
 
         # Cache configuration.
         # FIXME: this breaks the code because it's not in the spec
@@ -194,9 +190,8 @@ class StormpathManager(object):
         # config.setdefault('STORMPATH_SOCIAL', {})
 
         # Cookie configuration.
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
-        # config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
+        config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
+        config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
 
         # Cookie name (this is not overridable by users, at least not explicitly).
         config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
@@ -257,11 +252,11 @@ class StormpathManager(object):
         #     ]):
         #         raise ConfigurationError('You must define your Facebook app settings.')
 
-        # if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(config['STORMPATH_COOKIE_DOMAIN'], str):
-        #     raise ConfigurationError('STORMPATH_COOKIE_DOMAIN must be a string.')
+        if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(config['STORMPATH_COOKIE_DOMAIN'], str):
+            raise ConfigurationError('STORMPATH_COOKIE_DOMAIN must be a string.')
 
-        # if config['STORMPATH_COOKIE_DURATION'] and not isinstance(config['STORMPATH_COOKIE_DURATION'], timedelta):
-        #     raise ConfigurationError('STORMPATH_COOKIE_DURATION must be a timedelta object.')
+        if config['STORMPATH_COOKIE_DURATION'] and not isinstance(config['STORMPATH_COOKIE_DURATION'], timedelta):
+            raise ConfigurationError('STORMPATH_COOKIE_DURATION must be a timedelta object.')
 
     def init_login(self, app):
         """
@@ -272,9 +267,8 @@ class StormpathManager(object):
 
         :param obj app: The Flask app.
         """
-        # FIXME: not currently set in stormpath config init
-        # app.config['REMEMBER_COOKIE_DURATION'] = app.config['STORMPATH_COOKIE_DURATION']
-        # app.config['REMEMBER_COOKIE_DOMAIN'] = app.config['STORMPATH_COOKIE_DOMAIN']
+        app.config['REMEMBER_COOKIE_DURATION'] = app.config['STORMPATH_COOKIE_DURATION']
+        app.config['REMEMBER_COOKIE_DOMAIN'] = app.config['STORMPATH_COOKIE_DOMAIN']
 
         app.login_manager = LoginManager(app)
         app.login_manager.user_callback = self.load_user
@@ -284,8 +278,7 @@ class StormpathManager(object):
             app.login_manager.login_view = 'stormpath.login'
 
         # Make this Flask session expire automatically.
-        # FIXME: not currently set in stormpath config init
-        # app.config['PERMANENT_SESSION_LIFETIME'] = app.config['STORMPATH_COOKIE_DURATION']
+        app.config['PERMANENT_SESSION_LIFETIME'] = app.config['STORMPATH_COOKIE_DURATION']
 
     def init_routes(self, app):
         """

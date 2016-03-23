@@ -191,8 +191,8 @@ def forgot():
                 flash('Invalid email address.')
 
     return render_template(
-        current_app.config['STORMPATH_FORGOT_PASSWORD_TEMPLATE'],
-        form = form,
+        current_app.config['stormpath']['web']['forgotPassword']['template'],
+        form=form,
     )
 
 

@@ -41,7 +41,7 @@
             </form>
           </div>
         </div>
-        {% if config['stormpath']['web'][login]['enabled'] %}
+        {% if config['stormpath']['web']['login']['enabled'] %}
           <a class="forgot" href="{{ url_for('stormpath.login') }}">Back to Log In</a>
         {% endif %}
       </div>
