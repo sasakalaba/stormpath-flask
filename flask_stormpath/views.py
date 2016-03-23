@@ -7,7 +7,7 @@ if sys.version_info.major == 3:
 else:
     from facebook import get_user_from_cookie
     FACEBOOK = True
-    
+
 
 from flask import (
     abort,
@@ -20,6 +20,7 @@ from flask import (
 from flask.ext.login import login_user
 from six import string_types
 from stormpath.resources.provider import Provider
+from stormpath.resources import Resource
 
 from . import StormpathError, logout_user
 from .forms import (
@@ -54,9 +55,10 @@ def register():
         data = form.data
         for field in data.keys():
             if current_app.config['stormpath']['web']['register']['form'][
-                    'fields']['%s' % field]['enabled']:
+                    'fields'][Resource.to_camel_case(field)]['enabled']:
                 if current_app.config['stormpath']['web']['register']['form'][
-                        'fields']['%s' % field]['required'] and not data[field]:
+                        'fields'][Resource.to_camel_case(field)]['required'] \
+                        and not data[field]:
                     fail = True
 
                     # Manually override the terms for first / last name to make

@@ -360,9 +360,10 @@ class StormpathManager(object):
 
                 # If the user is specifying their credentials via a file path,
                 # we'll use this.
-                if self.app.config['stormpath']['apiKey']['file']:
+                if self.app.config['stormpath']['client']['apiKey']['file']:
                     ctx.stormpath_client = Client(
-                        api_key_file_location=self.app.config['stormpath']['apiKey']['file'],
+                        api_key_file_location=self.app.config['stormpath']
+                        ['client']['apiKey']['file'],
                         user_agent=user_agent,
                         # FIXME: read cache from config
                         # cache_options=self.app.config['STORMPATH_CACHE'],
@@ -373,8 +374,9 @@ class StormpathManager(object):
                 # try to grab those values.
                 else:
                     ctx.stormpath_client = Client(
-                        id=self.app.config['stormpath']['apiKey']['id'],
-                        secret=self.app.config['stormpath']['apiKey']['secret'],
+                        id=self.app.config['stormpath']['client']['apiKey']['id'],
+                        secret=self.app.config['stormpath']
+                        ['client']['apiKey']['secret'],
                         user_agent=user_agent,
                         # FIXME: read cache from config
                         # cache_options=self.app.config['STORMPATH_CACHE'],
