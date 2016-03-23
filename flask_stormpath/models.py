@@ -140,8 +140,8 @@ class User(Account):
         a `StormpathError` (flask.ext.stormpath.StormpathError).
         """
         _user = current_app.stormpath_manager.application.get_provider_account(
-            code = code,
-            provider = Provider.GOOGLE,
+            code=code,
+            provider=Provider.GOOGLE,
         )
         _user.__class__ = User
 
@@ -152,15 +152,15 @@ class User(Account):
         """
         Create a new User class given a Facebook user's access token.
 
-        Access tokens must be retrieved from Facebooks's OAuth service (Facebook
-        Login).
+        Access tokens must be retrieved from Facebooks's OAuth service
+        (Facebook Login).
 
         If something goes wrong, this will raise an exception -- most likely --
         a `StormpathError` (flask.ext.stormpath.StormpathError).
         """
         _user = current_app.stormpath_manager.application.get_provider_account(
-            access_token = access_token,
-            provider = Provider.FACEBOOK,
+            access_token=access_token,
+            provider=Provider.FACEBOOK,
         )
         _user.__class__ = User
 

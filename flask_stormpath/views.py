@@ -425,4 +425,5 @@ def logout():
     then redirect the user to the home page of the site.
    """
     logout_user()
-    return redirect('/')
+    return redirect(
+        current_app.config['stormpath']['web']['logout']['nextUri'])

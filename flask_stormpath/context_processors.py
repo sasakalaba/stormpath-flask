@@ -1,7 +1,6 @@
 """Custom context processors to make template development simpler."""
 
 
-from flask import current_app
 from flask.ext.login import _get_user
 
 
