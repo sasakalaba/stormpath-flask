@@ -185,10 +185,8 @@ class StormpathManager(object):
         # Configure templates.  These template settings control which templates are
         # used to render the Flask-Stormpath views.
         # FIXME: some of the settings break the code because they're not in the spec
-        # config.setdefault('STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
-        config.setdefault('STORMPATH_FORGOT_PASSWORD_TEMPLATE', 'flask_stormpath/forgot.html')
+        config.setdefault('STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
         # config.setdefault('STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE', 'flask_stormpath/forgot_email_sent.html')
-        config.setdefault('STORMPATH_FORGOT_PASSWORD_CHANGE_TEMPLATE', 'flask_stormpath/forgot_change.html')
         # config.setdefault('STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE', 'flask_stormpath/forgot_complete.html')
 
         # Social login configuration.
@@ -204,9 +202,9 @@ class StormpathManager(object):
         config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
 
         for key, value in config.items():
-            if key.startswith(config['stormpath'].STORMPATH_PREFIX):
+            if key.startswith(config['stormpath'].STORMPATH_PREFIX) and \
+                    key in config['stormpath']:
                 config['stormpath'][key] = value
-
         # If the user is specifying their credentials via a file path,
         # we'll use this.
         if self.app.config['stormpath']['client']['apiKey']['file']:

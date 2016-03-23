@@ -4,7 +4,7 @@
 {% block description %}You have successfully changed your password!{% endblock %}
 {% block bodytag %}login{% endblock %}
 {% block head %}
-  <meta http-equiv="refresh" content="5; url={{ config['STORMPATH_REDIRECT_URL'] }}" />
+  <meta http-equiv="refresh" content="5; url={{ config['stormpath']['web']['login']['nextUri'] }}" />
 {% endblock %}
 
 {% block body %}

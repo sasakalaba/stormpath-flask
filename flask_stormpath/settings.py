@@ -98,6 +98,16 @@ class StormpathSettings(collections.MutableMapping):
         node, child = self.__keytransform__(key)
         del node[child]
 
+    def __contains__(self, key):
+        try:
+            # FIXME: passwordPolicy breaks the code, in
+            # stormpath-python-config.stormpath_config:strategies._enrich_with_directory_policies
+            # self.__nodematch__(key)
+            self[key]
+            return True
+        except KeyError:
+            return False
+
     def __iter__(self):
         return iter(self.store)
 
