@@ -1,6 +1,7 @@
 """Helper functions for dealing with Flask-Stormpath settings."""
 
 import collections
+import json
 
 
 class StormpathSettings(collections.MutableMapping):

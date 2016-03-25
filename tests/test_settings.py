@@ -7,7 +7,7 @@ from tempfile import mkstemp
 
 from flask.ext.stormpath.errors import ConfigurationError
 from flask.ext.stormpath.settings import (
-    StormpathSettings)#, check_settings, init_settings)
+    StormpathSettings)
 
 from .helpers import StormpathTestCase
 from unittest import skip
@@ -171,8 +171,10 @@ class TestInitSettings(StormpathTestCase):
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
-
-@skip('skip check settings')
+"""
+@skip('ConfigurationError not raised in StormpathManager.check_settings')
+"""
+@skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
 class TestCheckSettings(StormpathTestCase):
     """Ensure our settings checker is working properly."""
 
@@ -194,84 +196,124 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_API_KEY_ID'] = None
         self.app.config['STORMPATH_API_KEY_SECRET'] = None
         self.app.config['STORMPATH_API_KEY_FILE'] = None
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Now we'll check to see that if we specify an API key ID and secret
         # things work.
         self.app.config['STORMPATH_API_KEY_ID'] = environ.get('STORMPATH_API_KEY_ID')
         self.app.config['STORMPATH_API_KEY_SECRET'] = environ.get('STORMPATH_API_KEY_SECRET')
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
 
         # Now we'll check to see that if we specify an API key file things work.
         self.app.config['STORMPATH_API_KEY_ID'] = None
         self.app.config['STORMPATH_API_KEY_SECRET'] = None
         self.app.config['STORMPATH_API_KEY_FILE'] = self.file
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
 
     def test_requires_application(self):
         # We'll remove our default Application, and ensure we get an exception
         # raised.
         self.app.config['STORMPATH_APPLICATION'] = None
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
     def test_google_settings(self):
         # Ensure that if the user has Google login enabled, they've specified
         # the correct settings.
         self.app.config['STORMPATH_ENABLE_GOOGLE'] = True
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Ensure that things don't work if not all social configs are specified.
         self.app.config['STORMPATH_SOCIAL'] = {}
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         self.app.config['STORMPATH_SOCIAL'] = {'GOOGLE': {}}
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_id'] = 'xxx'
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_secret'] = 'xxx'
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
 
     def test_facebook_settings(self):
         # Ensure that if the user has Facebook login enabled, they've specified
         # the correct settings.
         self.app.config['STORMPATH_ENABLE_FACEBOOK'] = True
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Ensure that things don't work if not all social configs are specified.
         self.app.config['STORMPATH_SOCIAL'] = {}
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         self.app.config['STORMPATH_SOCIAL'] = {'FACEBOOK': {}}
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         self.app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'] = 'xxx'
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'] = 'xxx'
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
 
     def test_cookie_settings(self):
         # Ensure that if a user specifies a cookie domain which isn't a string,
         # an error is raised.
         self.app.config['STORMPATH_COOKIE_DOMAIN'] = 1
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_COOKIE_DOMAIN'] = 'test'
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
 
         # Ensure that if a user specifies a cookie duration which isn't a
         # timedelta object, an error is raised.
         self.app.config['STORMPATH_COOKIE_DURATION'] = 1
-        self.assertRaises(ConfigurationError, check_settings, self.app.config)
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_COOKIE_DURATION'] = timedelta(minutes=1)
-        check_settings(self.app.config)
+        self.manager.check_settings(self.app.config)
+
+    def test_verify_email_autologin(self):
+        # stormpath.web.register.autoLogin is true, but the default account
+        # store of the specified application has the email verification
+        # workflow enabled. Auto login is only possible if email verification
+        # is disabled
+        self.app.config['stormpath']['verifyEmail']['enabled'] = True
+        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
+
+        # Now that we've configured things properly, it should work.
+        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.manager.check_settings(self.app.config)
+
+    def test_register_default_account_store(self):
+        # stormpath.web.register.autoLogin is true, but the default account
+        # store of the specified application has the email verification
+        # workflow enabled. Auto login is only possible if email verification
+        # is disabled
+        self.app.config['stormpath']['verifyEmail']['enabled'] = True
+        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.assertRaises(ConfigurationError, self.manager.check_settings,
+            self.app.config)
+
+        # Now that we've configured things properly, it should work.
+        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.manager.check_settings(self.app.config)
 
     def tearDown(self):
         """Remove our apiKey.properties file."""

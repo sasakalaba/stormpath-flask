@@ -137,7 +137,7 @@ web:
     enabled: null
     uri: "/verify"
     nextUri: "/login"
-    view: "verify"
+    template: "flask_stormpath/verify.html"
 
   login:
     enabled: true
@@ -197,7 +197,6 @@ web:
     loginUri: ""
     forgotUri: "/#/forgot"
     registerUri: "/#/register"
-
 
   # Social login configuration.  This defines the callback URIs for OAuth
   # flows, and the scope that is requested of each provider.  Some providers

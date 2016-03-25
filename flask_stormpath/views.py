@@ -28,6 +28,7 @@ from .forms import (
     ForgotPasswordForm,
     LoginForm,
     RegistrationForm,
+    VerificationForm
 )
 from .models import User
 
@@ -210,7 +211,8 @@ def forgot_change():
     this page can all be controlled via Flask-Stormpath settings.
     """
     try:
-        account = current_app.stormpath_manager.application.verify_password_reset_token(request.args.get('sptoken'))
+        account = current_app.stormpath_manager.application.verify_password_reset_token(
+            request.args.get('sptoken'))
     except StormpathError as err:
         abort(400)
 
@@ -241,8 +243,8 @@ def forgot_change():
         flash("Passwords don't match.")
 
     return render_template(
-        current_app.config['STORMPATH_FORGOT_PASSWORD_CHANGE_TEMPLATE'],
-        form = form,
+        current_app.config['web']['changePassword']['template'],
+        form=form,
     )
 
 
@@ -427,3 +429,41 @@ def logout():
     logout_user()
     return redirect(
         current_app.config['stormpath']['web']['logout']['nextUri'])
+
+
+def verify():
+    """
+    Log in an existing Stormpath user.
+
+    This view will render a login template, then redirect the user to the next
+    page (if authentication is successful).
+
+    The fields that are asked for, the URL this view is bound to, and the
+    template that is used to render this page can all be controlled via
+    Flask-Stormpath settings.
+    """
+    form = VerificationForm()
+
+    if form.validate_on_submit():
+        try:
+            # Try to fetch the user's account from Stormpath.  If this
+            # fails, an exception will be raised.
+            account = User.from_login(form.login.data, form.password.data)
+
+            # If we're able to successfully retrieve the user's account,
+            # we'll log the user in (creating a secure session using
+            # Flask-Login), then redirect the user to the ?next=<url>
+            # query parameter, or the Stormpath login nextUri setting.
+            login_user(account, remember=True)
+
+            return redirect(
+                request.args.get('next') or
+                current_app.config['stormpath']['web']['login']['nextUri'])
+
+        except StormpathError as err:
+            flash(err.message.get('message'))
+
+    return render_template(
+        current_app.config['stormpath']['web']['login']['template'],
+        form=form,
+    )

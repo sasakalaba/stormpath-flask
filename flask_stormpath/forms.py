@@ -108,3 +108,12 @@ class ChangePasswordForm(Form):
         """
         if self.password.data != field.data:
             raise ValidationError("Passwords don't match.")
+
+
+class VerificationForm(Form):
+    """
+    Verify a user's email.
+
+    This class is used to Verify a user's email address
+    """
+    email = StringField('Email', validators=[InputRequired()])

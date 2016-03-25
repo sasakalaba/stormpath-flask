@@ -48,8 +48,7 @@ from stormpath_config.loader import ConfigLoader
 from stormpath_config.strategies import (
     LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
     LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
-    #MoveAPIKeyToClientAPIKeyStrategy,
-    EnrichClientFromRemoteConfigStrategy,
+    EnrichClientFromRemoteConfigStrategy, # MoveAPIKeyToClientAPIKeyStrategy
     EnrichIntegrationFromRemoteConfigStrategy)
 
 from werkzeug.local import LocalProxy
@@ -66,6 +65,7 @@ from .views import (
     login,
     logout,
     register,
+    verify
 )
 
 
@@ -157,7 +157,7 @@ class StormpathManager(object):
                 LoadEnvConfigStrategy(prefix='STORMPATH')
             ],
             post_processing_strategies=[
-                LoadAPIKeyFromConfigStrategy(), #MoveAPIKeyToClientAPIKeyStrategy()
+                LoadAPIKeyFromConfigStrategy(), # MoveAPIKeyToClientAPIKeyStrategy()
             ],
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
@@ -200,28 +200,47 @@ class StormpathManager(object):
             if key.startswith(config['stormpath'].STORMPATH_PREFIX) and \
                     key in config['stormpath']:
                 config['stormpath'][key] = value
+
+        # Create our custom user agent.  This allows us to see which
+        # version of this SDK are out in the wild!
+        user_agent = 'stormpath-flask/%s flask/%s' % (
+            __version__, flask_version)
+
         # If the user is specifying their credentials via a file path,
         # we'll use this.
         if self.app.config['stormpath']['client']['apiKey']['file']:
-            stormpath_client = Client(
-                api_key_file_location=self.app.config['stormpath']['client']['apiKey']['file'],
+            self.stormpath_client = Client(
+                api_key_file_location=self.app.config['stormpath']
+                ['client']['apiKey']['file'],
+                user_agent=user_agent,
+                # FIXME: read cache from config
+                # cache_options=self.app.config['STORMPATH_CACHE'],
             )
 
         # If the user isn't specifying their credentials via a file
         # path, it means they're using environment variables, so we'll
         # try to grab those values.
         else:
-            stormpath_client = Client(
+            self.stormpath_client = Client(
                 id=self.app.config['stormpath']['client']['apiKey']['id'],
-                secret=self.app.config['stormpath']['client']['apiKey']['secret'],
+                secret=self.app.config['stormpath']
+                ['client']['apiKey']['secret'],
+                user_agent=user_agent,
+                # FIXME: read cache from config
+                # cache_options=self.app.config['STORMPATH_CACHE'],
             )
 
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
-            client_factory=lambda client: stormpath_client)
-        ecfrcs.process(self.app.config['stormpath'])
+            client_factory=lambda client: self.stormpath_client)
+        ecfrcs.process(self.app.config['stormpath'].store)
         eifrcs = EnrichIntegrationFromRemoteConfigStrategy(
-            client_factory=lambda client: stormpath_client)
-        eifrcs.process(self.app.config['stormpath'])
+            client_factory=lambda client: self.stormpath_client)
+        eifrcs.process(self.app.config['stormpath'].store)
+        # import pprint
+        # pprint.PrettyPrinter(indent=2).pprint(self.app.config['stormpath'].store)
+
+        self.stormpath_application = self.stormpath_client.applications.get(
+            self.app.config['stormpath']['application']['href'])
 
     def check_settings(self, config):
         """
@@ -251,6 +270,25 @@ class StormpathManager(object):
         #         facebook_config.get('app_secret'),
         #     ]):
         #         raise ConfigurationError('You must define your Facebook app settings.')
+
+        if not all([
+                config['stormpath']['web']['register']['enabled'],
+                self.stormpath_application.default_account_store_mapping]):
+            raise ConfigurationError(
+                "No default account store is mapped to the specified "
+                "application. A default account store is required for "
+                "registration.")
+
+        if all([config['stormpath']['web']['register']['autoLogin'],
+                config['stormpath']['web']['verifyEmail']['enabled']]):
+            raise ConfigurationError(
+                "Invalid configuration: stormpath.web.register.autoLogin "
+                "is true, but the default account store of the "
+                "specified application has the email verification "
+                "workflow enabled. Auto login is only possible if email "
+                "verification is disabled. "
+                "Please disable this workflow on this application's default "
+                "account store.")
 
         if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(config['STORMPATH_COOKIE_DOMAIN'], str):
             raise ConfigurationError('STORMPATH_COOKIE_DOMAIN must be a string.')
@@ -328,6 +366,13 @@ class StormpathManager(object):
                 logout,
             )
 
+        if app.config['stormpath']['web']['verifyEmail']['enabled']:
+            app.add_url_rule(
+                app.config['stormpath']['web']['verifyEmail']['uri'],
+                'stormpath.verify',
+                verify,
+            )
+
         # FIXME: enable this in init_settings
         # if app.config['STORMPATH_ENABLE_GOOGLE']:
         #     app.add_url_rule(
@@ -352,36 +397,7 @@ class StormpathManager(object):
         ctx = stack.top.app
         if ctx is not None:
             if not hasattr(ctx, 'stormpath_client'):
-
-                # Create our custom user agent.  This allows us to see which
-                # version of this SDK are out in the wild!
-                user_agent = 'stormpath-flask/%s flask/%s' % (
-                    __version__, flask_version)
-
-                # If the user is specifying their credentials via a file path,
-                # we'll use this.
-                if self.app.config['stormpath']['client']['apiKey']['file']:
-                    ctx.stormpath_client = Client(
-                        api_key_file_location=self.app.config['stormpath']
-                        ['client']['apiKey']['file'],
-                        user_agent=user_agent,
-                        # FIXME: read cache from config
-                        # cache_options=self.app.config['STORMPATH_CACHE'],
-                    )
-
-                # If the user isn't specifying their credentials via a file
-                # path, it means they're using environment variables, so we'll
-                # try to grab those values.
-                else:
-                    ctx.stormpath_client = Client(
-                        id=self.app.config['stormpath']['client']['apiKey']['id'],
-                        secret=self.app.config['stormpath']
-                        ['client']['apiKey']['secret'],
-                        user_agent=user_agent,
-                        # FIXME: read cache from config
-                        # cache_options=self.app.config['STORMPATH_CACHE'],
-                    )
-
+                return self.stormpath_client
             return ctx.stormpath_client
 
     @property
