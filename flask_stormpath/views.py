@@ -17,10 +17,10 @@ from flask import (
     render_template,
     request,
 )
-from flask.ext.login import login_user
+from flask.ext.login import login_user, login_required, current_user
 from six import string_types
 from stormpath.resources.provider import Provider
-from stormpath.resources import Resource
+from stormpath.resources import Resource, Expansion
 
 from . import StormpathError, logout_user
 from .forms import (
@@ -431,39 +431,49 @@ def logout():
         current_app.config['stormpath']['web']['logout']['nextUri'])
 
 
-def verify():
-    """
-    Log in an existing Stormpath user.
+@login_required
+def me():
+    expansion = Expansion()
+    expanded_attrs = []
+    for attr, flag in current_app.config['stormpath']['web']['me']['expand'].items():
+        if flag:
+            expansion.add_property(Resource.from_camel_case(attr))
+            expanded_attrs.append(attr)
+    if expansion.items:
+        current_user._expand = expansion
+    current_user.refresh()
 
-    This view will render a login template, then redirect the user to the next
-    page (if authentication is successful).
+    import json
+    import datetime
+    from isodate import duration_isoformat
 
-    The fields that are asked for, the URL this view is bound to, and the
-    template that is used to render this page can all be controlled via
-    Flask-Stormpath settings.
-    """
-    form = VerificationForm()
+    user_data = {}
+    for user_attr_name in dir(current_user):
+        user_attr = getattr(current_user, user_attr_name)
+        if user_attr:
+            if user_attr_name in expanded_attrs:
+                user_data[user_attr_name] = {}
+                for attr_name in dir(user_attr):
+                    attr = getattr(user_attr, attr_name)
+                    if not isinstance(attr, Resource) and attr:
+                        # FIXME: handle datetimes
+                        print attr_name, type(attr)
+                        if isinstance(attr, datetime.datetime):
+                            continue
+                        if attr_name in user_attr.timedelta_attrs and \
+                                isinstance(attr, datetime.timedelta):
+                            attr = duration_isoformat(attr)
+                        user_data[user_attr_name][
+                            Resource.to_camel_case(attr_name)] = attr
+            elif not isinstance(user_attr, Resource) and user_attr:
+                # FIXME: handle datetimes
+                if isinstance(user_attr, datetime.datetime):
+                    continue
+                if (user_attr_name in current_user.timedelta_attrs and
+                    isinstance(user_attr, datetime.timedelta)) or \
+                        isinstance(user_attr, datetime.datetime):
+                    attr = duration_isoformat(attr)
+                user_data[
+                    Resource.to_camel_case(user_attr_name)] = user_attr
 
-    if form.validate_on_submit():
-        try:
-            # Try to fetch the user's account from Stormpath.  If this
-            # fails, an exception will be raised.
-            account = User.from_login(form.login.data, form.password.data)
-
-            # If we're able to successfully retrieve the user's account,
-            # we'll log the user in (creating a secure session using
-            # Flask-Login), then redirect the user to the ?next=<url>
-            # query parameter, or the Stormpath login nextUri setting.
-            login_user(account, remember=True)
-
-            return redirect(
-                request.args.get('next') or
-                current_app.config['stormpath']['web']['login']['nextUri'])
-
-        except StormpathError as err:
-            flash(err.message.get('message'))
-
-    return render_template(
-        current_app.config['stormpath']['web']['login']['template'],
-        form=form,
-    )
+    return json.dumps({'account': user_data}), 200, {'Content-Type': 'application/json'}

@@ -37,8 +37,9 @@ from flask.ext.login import (
     _get_user,
     login_required,
     login_user,
-    logout_user,
+    logout_user
 )
+
 from stormpath.client import Client
 from stormpath.error import Error as StormpathError
 # FIXME: cannot install stormpath_config via pip
@@ -65,7 +66,7 @@ from .views import (
     login,
     logout,
     register,
-    verify
+    me
 )
 
 
@@ -366,12 +367,19 @@ class StormpathManager(object):
                 logout,
             )
 
-        if app.config['stormpath']['web']['verifyEmail']['enabled']:
+        if app.config['stormpath']['web']['me']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['verifyEmail']['uri'],
-                'stormpath.verify',
-                verify,
+                app.config['stormpath']['web']['me']['uri'],
+                'stormpath.me',
+                me,
             )
+
+        # if app.config['stormpath']['web']['verifyEmail']['enabled']:
+        #     app.add_url_rule(
+        #         app.config['stormpath']['web']['verifyEmail']['uri'],
+        #         'stormpath.verify',
+        #         verify,
+        #     )
 
         # FIXME: enable this in init_settings
         # if app.config['STORMPATH_ENABLE_GOOGLE']:
