@@ -1,9 +1,6 @@
 """Our pluggable views."""
 
 import sys
-import json
-import datetime
-from isodate import duration_isoformat
 
 if sys.version_info.major == 3:
     FACEBOOK = False
@@ -437,42 +434,11 @@ def logout():
 @login_required
 def me():
     expansion = Expansion()
-    expanded_attrs = []
     for attr, flag in current_app.config['stormpath']['web']['me']['expand'].items():
         if flag:
-            expansion.add_property(Resource.from_camel_case(attr))
-            expanded_attrs.append(attr)
+            expansion.add_property(attr)
     if expansion.items:
         current_user._expand = expansion
     current_user.refresh()
 
-    user_data = {}
-    for user_attr_name in dir(current_user):
-        user_attr = getattr(current_user, user_attr_name)
-        if user_attr:
-            if user_attr_name in expanded_attrs:
-                user_data[user_attr_name] = {}
-                for attr_name in dir(user_attr):
-                    attr = getattr(user_attr, attr_name)
-                    if not isinstance(attr, Resource) and attr:
-                        # FIXME: handle datetimes
-                        print attr_name, type(attr)
-                        if isinstance(attr, datetime.datetime):
-                            continue
-                        if attr_name in user_attr.timedelta_attrs and \
-                                isinstance(attr, datetime.timedelta):
-                            attr = duration_isoformat(attr)
-                        user_data[user_attr_name][
-                            Resource.to_camel_case(attr_name)] = attr
-            elif not isinstance(user_attr, Resource) and user_attr:
-                # FIXME: handle datetimes
-                if isinstance(user_attr, datetime.datetime):
-                    continue
-                if (user_attr_name in current_user.timedelta_attrs and
-                    isinstance(user_attr, datetime.timedelta)) or \
-                        isinstance(user_attr, datetime.datetime):
-                    attr = duration_isoformat(attr)
-                user_data[
-                    Resource.to_camel_case(user_attr_name)] = user_attr
-
-    return json.dumps({'account': user_data}), 200, {'Content-Type': 'application/json'}
+    return current_user.to_json(), 200, {'Content-Type': 'application/json'}
