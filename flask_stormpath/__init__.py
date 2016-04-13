@@ -210,7 +210,7 @@ class StormpathManager(object):
         # If the user is specifying their credentials via a file path,
         # we'll use this.
         if self.app.config['stormpath']['client']['apiKey']['file']:
-            self.stormpath_client = Client(
+            self.client = Client(
                 api_key_file_location=self.app.config['stormpath']
                 ['client']['apiKey']['file'],
                 user_agent=user_agent,
@@ -222,7 +222,7 @@ class StormpathManager(object):
         # path, it means they're using environment variables, so we'll
         # try to grab those values.
         else:
-            self.stormpath_client = Client(
+            self.client = Client(
                 id=self.app.config['stormpath']['client']['apiKey']['id'],
                 secret=self.app.config['stormpath']
                 ['client']['apiKey']['secret'],
@@ -232,15 +232,15 @@ class StormpathManager(object):
             )
 
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
-            client_factory=lambda client: self.stormpath_client)
+            client_factory=lambda client: self.client)
         ecfrcs.process(self.app.config['stormpath'].store)
         eifrcs = EnrichIntegrationFromRemoteConfigStrategy(
-            client_factory=lambda client: self.stormpath_client)
+            client_factory=lambda client: self.client)
         eifrcs.process(self.app.config['stormpath'].store)
         # import pprint
         # pprint.PrettyPrinter(indent=2).pprint(self.app.config['stormpath'].store)
 
-        self.stormpath_application = self.stormpath_client.applications.get(
+        self.application = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
 
     def check_settings(self, config):
@@ -274,7 +274,7 @@ class StormpathManager(object):
 
         if not all([
                 config['stormpath']['web']['register']['enabled'],
-                self.stormpath_application.default_account_store_mapping]):
+                self.application.default_account_store_mapping]):
             raise ConfigurationError(
                 "No default account store is mapped to the specified "
                 "application. A default account store is required for "
@@ -397,18 +397,6 @@ class StormpathManager(object):
         #     )
 
     @property
-    def client(self):
-        """
-        Lazily load the Stormpath Client object we need to access the raw
-        Stormpath SDK.
-        """
-        ctx = stack.top.app
-        if ctx is not None:
-            if not hasattr(ctx, 'stormpath_client'):
-                return self.stormpath_client
-            return ctx.stormpath_client
-
-    @property
     def login_view(self):
         """
         Return the user's Flask-Login login view, behind the scenes.
@@ -422,21 +410,6 @@ class StormpathManager(object):
         scenes.
         """
         self.app.login_manager.login_view = value
-
-    @property
-    def application(self):
-        """
-        Lazily load the Stormpath Application object we need to handle user
-        authentication, etc.
-        """
-        ctx = stack.top.app
-        if ctx is not None:
-            if not hasattr(ctx, 'stormpath_application'):
-                ctx.stormpath_application = self.client.applications.search(
-                    self.app.config['stormpath']['application']['name']
-                )[0]
-
-            return ctx.stormpath_application
 
     @staticmethod
     def load_user(account_href):
