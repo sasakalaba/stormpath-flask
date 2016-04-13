@@ -1,6 +1,9 @@
 """Our pluggable views."""
 
 import sys
+import json
+import datetime
+from isodate import duration_isoformat
 
 if sys.version_info.major == 3:
     FACEBOOK = False
@@ -442,10 +445,6 @@ def me():
     if expansion.items:
         current_user._expand = expansion
     current_user.refresh()
-
-    import json
-    import datetime
-    from isodate import duration_isoformat
 
     user_data = {}
     for user_attr_name in dir(current_user):
