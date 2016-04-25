@@ -237,8 +237,6 @@ class StormpathManager(object):
         eifrcs = EnrichIntegrationFromRemoteConfigStrategy(
             client_factory=lambda client: self.client)
         eifrcs.process(self.app.config['stormpath'].store)
-        # import pprint
-        # pprint.PrettyPrinter(indent=2).pprint(self.app.config['stormpath'].store)
 
         self.application = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
@@ -252,25 +250,25 @@ class StormpathManager(object):
 
         :param dict config: The Flask app config.
         """
-        # FIXME: this needs to be uncommented based on settings in init_settings
-        # if config['STORMPATH_ENABLE_GOOGLE']:
-        #     google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
 
-        #     if not google_config or not all([
-        #         google_config.get('client_id'),
-        #         google_config.get('client_secret'),
-        #     ]):
-        #         raise ConfigurationError('You must define your Google app settings.')
+        if config['STORMPATH_ENABLE_GOOGLE']:
+            google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
 
-        # if config['STORMPATH_ENABLE_FACEBOOK']:
-        #     facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
+            if not google_config or not all([
+                google_config.get('client_id'),
+                google_config.get('client_secret'),
+            ]):
+                raise ConfigurationError('You must define your Google app settings.')
 
-        #     if not facebook_config or not all([
-        #         facebook_config,
-        #         facebook_config.get('app_id'),
-        #         facebook_config.get('app_secret'),
-        #     ]):
-        #         raise ConfigurationError('You must define your Facebook app settings.')
+        if config['STORMPATH_ENABLE_FACEBOOK']:
+            facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
+
+            if not facebook_config or not all([
+                facebook_config,
+                facebook_config.get('app_id'),
+                facebook_config.get('app_secret'),
+            ]):
+                raise ConfigurationError('You must define your Facebook app settings.')
 
         if not all([
                 config['stormpath']['web']['register']['enabled'],
@@ -381,20 +379,19 @@ class StormpathManager(object):
         #         verify,
         #     )
 
-        # FIXME: enable this in init_settings
-        # if app.config['STORMPATH_ENABLE_GOOGLE']:
-        #     app.add_url_rule(
-        #         app.config['STORMPATH_GOOGLE_LOGIN_URL'],
-        #         'stormpath.google_login',
-        #         google_login,
-        #     )
+        if app.config['STORMPATH_ENABLE_GOOGLE']:
+            app.add_url_rule(
+                app.config['STORMPATH_GOOGLE_LOGIN_URL'],
+                'stormpath.google_login',
+                google_login,
+            )
 
-        # if app.config['STORMPATH_ENABLE_FACEBOOK']:
-        #     app.add_url_rule(
-        #         app.config['STORMPATH_FACEBOOK_LOGIN_URL'],
-        #         'stormpath.facebook_login',
-        #         facebook_login,
-        #     )
+        if app.config['STORMPATH_ENABLE_FACEBOOK']:
+            app.add_url_rule(
+                app.config['STORMPATH_FACEBOOK_LOGIN_URL'],
+                'stormpath.facebook_login',
+                facebook_login,
+            )
 
     @property
     def login_view(self):

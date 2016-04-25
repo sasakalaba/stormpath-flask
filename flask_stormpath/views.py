@@ -16,6 +16,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    make_response
 )
 from flask.ext.login import login_user, login_required, current_user
 from six import string_types
@@ -31,6 +32,26 @@ from .forms import (
     VerificationForm
 )
 from .models import User
+
+
+def make_stormpath_response(data, template=None):
+    if request_wants_json():
+        stormpath_response = make_response(data['form'].json, 200)
+        stormpath_response.mimetype = 'application/json'
+    else:
+        stormpath_response = render_template(
+            current_app.config['stormpath']['web']['login']['template'],
+            **data)
+    return stormpath_response
+
+
+def request_wants_json():
+    best = request.accept_mimetypes \
+        .best_match(current_app.config['stormpath']['web']['produces'])
+    if best is None and current_app.config['stormpath']['web']['produces']:
+        best = current_app.config['stormpath']['web']['produces'][0]
+
+    return best == 'application/json'
 
 
 def register():
@@ -107,10 +128,9 @@ def register():
             except StormpathError as err:
                 flash(err.message.get('message'))
 
-    return render_template(
-        current_app.config['stormpath']['web']['register']['template'],
-        form=form,
-    )
+    return make_stormpath_response(
+        template=current_app.config['stormpath']['web']['register']['template'],
+        data={'form': form})
 
 
 def login():
@@ -145,12 +165,11 @@ def login():
                 current_app.config['stormpath']['web']['login']['nextUri'])
 
         except StormpathError as err:
-            flash(err.message.get('message'))
+            flash(err.message)
 
-    return render_template(
-        current_app.config['stormpath']['web']['login']['template'],
-        form=form,
-    )
+    return make_stormpath_response(
+        template=current_app.config['stormpath']['web']['login']['template'],
+        data={'form': form})
 
 
 def forgot():
@@ -338,7 +357,8 @@ def facebook_login():
     # Facebook user will be treated exactly like a normal Stormpath user!
     login_user(account, remember=True)
 
-    return redirect(request.args.get('next') or current_app.config['STORMPATH_REDIRECT_URL'])
+    return redirect(request.args.get('next') or
+                    current_app.config['stormpath']['web']['login']['nextUri'])
 
 
 def google_login():
@@ -416,7 +436,8 @@ def google_login():
     # Google user will be treated exactly like a normal Stormpath user!
     login_user(account, remember=True)
 
-    return redirect(request.args.get('next') or current_app.config['STORMPATH_REDIRECT_URL'])
+    return redirect(request.args.get('next') or
+                    current_app.config['stormpath']['web']['login']['nextUri'])
 
 
 def logout():
