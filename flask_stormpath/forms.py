@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 from flask import current_app
 from flask.ext.wtf import Form
-from flask.ext.login import current_user
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, ValidationError
 from stormpath.resources import Resource

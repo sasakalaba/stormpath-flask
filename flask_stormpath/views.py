@@ -1,6 +1,7 @@
 """Our pluggable views."""
 
 import sys
+import json
 
 if sys.version_info.major == 3:
     FACEBOOK = False
@@ -34,9 +35,9 @@ from .forms import (
 from .models import User
 
 
-def make_stormpath_response(data, template=None):
-    if request_wants_json():
-        stormpath_response = make_response(data['form'].json, 200)
+def make_stormpath_response(data, template=None, return_json=True):
+    if return_json:
+        stormpath_response = make_response(data, 200)
         stormpath_response.mimetype = 'application/json'
     else:
         stormpath_response = render_template(
@@ -65,7 +66,7 @@ def register():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
-    form = RegistrationForm()
+    form = RegistrationForm(csrf_enabled=False)
 
     # If we received a POST request with valid information, we'll continue
     # processing.
@@ -126,11 +127,17 @@ def register():
                 return redirect(redirect_url)
 
             except StormpathError as err:
+                if request_wants_json():
+                    return make_stormpath_response(
+                        json.dumps({
+                            'error': err.status if err.status else 400,
+                            'message': err.user_message
+                        }))
                 flash(err.message.get('message'))
 
     return make_stormpath_response(
         template=current_app.config['stormpath']['web']['register']['template'],
-        data={'form': form})
+        data={'form': form}, return_json=False)
 
 
 def login():
@@ -144,7 +151,7 @@ def login():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
-    form = LoginForm()
+    form = LoginForm(csrf_enabled=False)
 
     # If we received a POST request with valid information, we'll continue
     # processing.
@@ -160,16 +167,28 @@ def login():
             # query parameter, or the Stormpath login nextUri setting.
             login_user(account, remember=True)
 
+            if request_wants_json():
+                return make_stormpath_response(data=current_user.to_json())
+
             return redirect(
                 request.args.get('next') or
                 current_app.config['stormpath']['web']['login']['nextUri'])
 
         except StormpathError as err:
+            if request_wants_json():
+                return make_stormpath_response(
+                    json.dumps({
+                        'error': err.status if err.status else 400,
+                        'message': err.user_message
+                    }))
             flash(err.message)
+
+    if request_wants_json():
+        return make_stormpath_response(data=form.json)
 
     return make_stormpath_response(
         template=current_app.config['stormpath']['web']['login']['template'],
-        data={'form': form})
+        data={'form': form}, return_json=False)
 
 
 def forgot():
