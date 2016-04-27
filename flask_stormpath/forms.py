@@ -6,7 +6,7 @@ from collections import OrderedDict
 from flask import current_app
 from flask.ext.wtf import Form
 from wtforms.fields import PasswordField, StringField
-from wtforms.validators import InputRequired, ValidationError
+from wtforms.validators import InputRequired, ValidationError, EqualTo
 from stormpath.resources import Resource
 
 
@@ -28,7 +28,7 @@ class StormpathForm(Form):
         for field in field_order:
             if field_list[field]['enabled']:
                 validators = []
-                json_field = {'name': field}
+                json_field = {'name': Resource.from_camel_case(field)}
 
                 if field_list[field]['required']:
                     validators.append(InputRequired())
@@ -49,6 +49,10 @@ class StormpathForm(Form):
 
                 placeholder = field_list[field]['placeholder']
                 json_field['placeholder'] = placeholder
+
+                if field == 'confirmPassword':
+                    validators.append(
+                        EqualTo('password', message='Passwords must match'))
 
                 self._json['form']['fields'].append(json_field)
 

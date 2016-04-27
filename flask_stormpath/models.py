@@ -71,7 +71,8 @@ class User(Account):
         return return_value
 
     @classmethod
-    def create(self, email, password, given_name, surname, username=None, middle_name=None, custom_data=None, status='ENABLED'):
+    def create(self, email=None, password=None, given_name=None, surname=None,
+        username=None, middle_name=None, custom_data=None, status='ENABLED'):
         """
         Create a new User.
 

@@ -51,7 +51,6 @@ def request_wants_json():
         .best_match(current_app.config['stormpath']['web']['produces'])
     if best is None and current_app.config['stormpath']['web']['produces']:
         best = current_app.config['stormpath']['web']['produces'][0]
-
     return best == 'application/json'
 
 
@@ -71,6 +70,21 @@ def register():
     # If we received a POST request with valid information, we'll continue
     # processing.
     if form.validate_on_submit():
+        given_name_enabled = current_app.config['stormpath']['web'] \
+            ['register']['form']['fields']['givenName']['enabled']
+        given_name_required = current_app.config['stormpath']['web'] \
+            ['register']['form']['fields']['givenName']['required']
+        username_enabled = current_app.config['stormpath']['web'] \
+            ['register']['form']['fields']['username']
+        username_required = current_app.config['stormpath']['web'] \
+            ['register']['form']['fields']['username']
+
+        if 'username' not in form.data:
+            if not username_enabled or not username_required:
+                form.data['username'] = 'UNKNOWN'
+        if 'given_name' not in form.data:
+            if not given_name_enabled or not given_name_required:
+                form.data['given_name'] = 'UNKNOWN'
         fail = False
 
         # Iterate through all fields, grabbing the necessary form data and
@@ -99,14 +113,9 @@ def register():
 
             # Attempt to create the user's account on Stormpath.
             try:
-
-                # Since Stormpath requires both the given_name and surname
-                # fields be set, we'll just set the both to 'Anonymous' if
-                # the user has # explicitly said they don't want to collect
-                # those fields.
-                data['given_name'] = data['given_name'] or 'Anonymous'
-                data['surname'] = data['surname'] or 'Anonymous'
-
+                # Remove the confirmation password so it won't cause an error
+                if 'confirm_password' in data:
+                    data.pop('confirm_password')
                 # Create the user account on Stormpath.  If this fails, an
                 # exception will be raised.
                 account = User.create(**data)
@@ -116,6 +125,12 @@ def register():
                 # Flask-Login), then redirect the user to the
                 # Stormpath login nextUri setting.
                 login_user(account, remember=True)
+
+                if request_wants_json():
+                    account_data = {
+                        'account': json.loads(account.to_json())}
+                    return make_stormpath_response(
+                        data=json.dumps(account_data))
 
                 redirect_url = current_app.config[
                     'stormpath']['web']['register']['nextUri']
@@ -130,10 +145,18 @@ def register():
                 if request_wants_json():
                     return make_stormpath_response(
                         json.dumps({
-                            'error': err.status if err.status else 400,
+                            'status': err.status if err.status else 400,
                             'message': err.user_message
                         }))
                 flash(err.message.get('message'))
+
+    if request_wants_json():
+        if form.errors:
+            return make_stormpath_response(
+                data=json.dumps({
+                    'status': 400,
+                    'message': form.errors}))
+        return make_stormpath_response(data=form.json)
 
     return make_stormpath_response(
         template=current_app.config['stormpath']['web']['register']['template'],
@@ -168,7 +191,9 @@ def login():
             login_user(account, remember=True)
 
             if request_wants_json():
-                return make_stormpath_response(data=current_user.to_json())
+                account_data = {'account': json.loads(current_user.to_json())}
+                return make_stormpath_response(
+                    data={'account': account_data})
 
             return redirect(
                 request.args.get('next') or
