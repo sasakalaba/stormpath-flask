@@ -328,9 +328,16 @@ class StormpathManager(object):
 
         :param obj app: The Flask app.
         """
+        if app.config['stormpath']['web']['basePath']:
+            base_path = app.config['stormpath']['web']['basePath']
+        else:
+            base_path = '/'
+
         if app.config['stormpath']['web']['register']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['register']['uri'],
+                os.path.join(
+                    base_path,
+                    app.config['stormpath']['web']['register']['uri'].strip('/')),
                 'stormpath.register',
                 register,
                 methods=['GET', 'POST'],
@@ -338,7 +345,8 @@ class StormpathManager(object):
 
         if app.config['stormpath']['web']['login']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['login']['uri'],
+                os.path.join(
+                    base_path, app.config['stormpath']['web']['login']['uri'].strip('/')),
                 'stormpath.login',
                 login,
                 methods=['GET', 'POST'],
@@ -346,13 +354,17 @@ class StormpathManager(object):
 
         if app.config['stormpath']['web']['forgotPassword']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['forgotPassword']['uri'],
+                os.path.join(
+                    base_path,
+                    app.config['stormpath']['web']['forgotPassword']['uri'].strip('/')),
                 'stormpath.forgot',
                 forgot,
                 methods=['GET', 'POST'],
             )
             app.add_url_rule(
-                app.config['stormpath']['web']['changePassword']['uri'],
+                os.path.join(
+                    base_path,
+                    app.config['stormpath']['web']['changePassword']['uri'].strip('/')),
                 'stormpath.forgot_change',
                 forgot_change,
                 methods=['GET', 'POST'],
@@ -360,14 +372,18 @@ class StormpathManager(object):
 
         if app.config['stormpath']['web']['logout']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['logout']['uri'],
+                os.path.join(
+                    base_path,
+                    app.config['stormpath']['web']['logout']['uri'].strip('/')),
                 'stormpath.logout',
                 logout,
             )
 
         if app.config['stormpath']['web']['me']['enabled']:
             app.add_url_rule(
-                app.config['stormpath']['web']['me']['uri'],
+                os.path.join(
+                    base_path,
+                    app.config['stormpath']['web']['me']['uri'].strip('/')),
                 'stormpath.me',
                 me,
             )
@@ -381,14 +397,16 @@ class StormpathManager(object):
 
         if app.config['STORMPATH_ENABLE_GOOGLE']:
             app.add_url_rule(
-                app.config['STORMPATH_GOOGLE_LOGIN_URL'],
+                os.path.join(
+                    base_path, app.config['STORMPATH_GOOGLE_LOGIN_URL']),
                 'stormpath.google_login',
                 google_login,
             )
 
         if app.config['STORMPATH_ENABLE_FACEBOOK']:
             app.add_url_rule(
-                app.config['STORMPATH_FACEBOOK_LOGIN_URL'],
+                os.path.join(
+                    base_path, app.config['STORMPATH_FACEBOOK_LOGIN_URL']),
                 'stormpath.facebook_login',
                 facebook_login,
             )
