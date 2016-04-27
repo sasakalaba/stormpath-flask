@@ -123,8 +123,11 @@ def register():
                 # If we're able to successfully create the user's account,
                 # we'll log the user in (creating a secure session using
                 # Flask-Login), then redirect the user to the
-                # Stormpath login nextUri setting.
-                login_user(account, remember=True)
+                # Stormpath login nextUri setting but only if autoLogin.
+                if (current_app.config['stormpath']['web']['register']
+                    ['autoLogin'] and not current_app.config['stormpath']
+                        ['web']['register']['verifyEmail']['enabled']):
+                    login_user(account, remember=True)
 
                 if request_wants_json():
                     account_data = {
@@ -506,4 +509,4 @@ def me():
         current_user._expand = expansion
     current_user.refresh()
 
-    return current_user.to_json(), 200, {'Content-Type': 'application/json'}
+    return make_stormpath_response(current_user.to_json())
