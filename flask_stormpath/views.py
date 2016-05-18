@@ -47,9 +47,9 @@ def register():
         data = form.data
         for field in data.keys():
             if current_app.config['stormpath']['web']['register']['form'][
-                    'fields']['%s' % field.upper()]['enabled']:
+                    'fields']['%s' % field]['enabled']:
                 if current_app.config['stormpath']['web']['register']['form'][
-                        '%s' % field.upper()]['required'] and not data[field]:
+                        'fields']['%s' % field]['required'] and not data[field]:
                     fail = True
 
                     # Manually override the terms for first / last name to make

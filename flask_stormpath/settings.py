@@ -2,11 +2,17 @@
 
 import os
 from datetime import timedelta
+
+# FIXME: cannot install stormpath_config via pip
+import sys
+sys.path.insert(0, '/home/sasa/Projects/stormpath/stormpath-python-config')
+
 from stormpath_config.loader import ConfigLoader
 from stormpath_config.strategies import (
     LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
     LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
-    MoveAPIKeyToClientAPIKeyStrategy, EnrichClientFromRemoteConfigStrategy)
+    #MoveAPIKeyToClientAPIKeyStrategy,
+    EnrichClientFromRemoteConfigStrategy)
 
 
 from .errors import ConfigurationError
@@ -139,7 +145,7 @@ def init_settings(config):
             LoadEnvConfigStrategy(prefix='STORMPATH')
         ],
         post_processing_strategies=[
-            LoadAPIKeyFromConfigStrategy(), MoveAPIKeyToClientAPIKeyStrategy()
+            LoadAPIKeyFromConfigStrategy(), #MoveAPIKeyToClientAPIKeyStrategy()
         ],
         validation_strategies=[ValidateClientConfigStrategy()])
     config['stormpath'] = StormpathSettings(config_loader.load())

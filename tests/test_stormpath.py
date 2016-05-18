@@ -15,7 +15,6 @@ from flask import Flask, request
 from flask.ext.stormpath import (
     StormpathManager,
     User,
-    groups_required,
     login_user,
     logout_user,
 )
