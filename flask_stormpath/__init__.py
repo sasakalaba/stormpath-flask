@@ -21,6 +21,7 @@ __author__ = 'Stormpath, Inc.'
 __license__ = 'Apache'
 __copyright__ = '(c) 2012 - 2015 Stormpath, Inc.'
 
+import os
 
 from flask import (
     Blueprint,
@@ -40,12 +41,22 @@ from flask.ext.login import (
 
 from stormpath.client import Client
 from stormpath.error import Error as StormpathError
+# FIXME: cannot install stormpath_config via pip
+import sys
+sys.path.insert(0, '/home/sasa/Projects/stormpath/stormpath-python-config')
+from stormpath_config.loader import ConfigLoader
+from stormpath_config.strategies import (
+    LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
+    LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
+    #MoveAPIKeyToClientAPIKeyStrategy,
+    EnrichClientFromRemoteConfigStrategy,
+    EnrichIntegrationFromRemoteConfigStrategy)
 
 from werkzeug.local import LocalProxy
 
 from .context_processors import user_context_processor
 from .models import User
-from .settings import check_settings, init_settings
+from .settings import StormpathSettings
 from .views import (
     google_login,
     facebook_login,
@@ -96,11 +107,11 @@ class StormpathManager(object):
         """
         # Initialize all of the Flask-Stormpath configuration variables and
         # settings.
-        init_settings(app.config)
+        self.init_settings(app.config)
 
         # Check our user defined settings to ensure Flask-Stormpath is properly
         # configured.
-        check_settings(app.config)
+        self.check_settings(app.config)
 
         # Initialize the Flask-Login extension.
         self.init_login(app)
@@ -121,6 +132,152 @@ class StormpathManager(object):
         # Store a reference to the Flask app so we can use it later if
         # necessary!
         self.app = app
+
+    def init_settings(self, config):
+        """
+        Initialize the Flask-Stormpath settings.
+
+        This function sets all default configuration values.
+
+        :param dict config: The Flask app config.
+        """
+        # Basic Stormpath credentials and configuration.
+        web_config_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'config/default-config.yml')
+        config_loader = ConfigLoader(
+            load_strategies=[
+                LoadFileConfigStrategy(web_config_file),
+                LoadAPIKeyConfigStrategy("~/.stormpath/apiKey.properties"),
+                LoadFileConfigStrategy("~/.stormpath/stormpath.json"),
+                LoadFileConfigStrategy("~/.stormpath/stormpath.yaml"),
+                LoadAPIKeyConfigStrategy("./apiKey.properties"),
+                LoadFileConfigStrategy("./stormpath.yaml"),
+                LoadFileConfigStrategy("./stormpath.json"),
+                LoadEnvConfigStrategy(prefix='STORMPATH')
+            ],
+            post_processing_strategies=[
+                LoadAPIKeyFromConfigStrategy(), #MoveAPIKeyToClientAPIKeyStrategy()
+            ],
+            validation_strategies=[ValidateClientConfigStrategy()])
+        config['stormpath'] = StormpathSettings(config_loader.load())
+
+        # Most of the settings are used for backwards compatibility.
+        config.setdefault('STORMPATH_API_KEY_ID', None)
+        config.setdefault('STORMPATH_API_KEY_SECRET', None)
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_API_KEY_FILE', None)
+        config.setdefault('STORMPATH_APPLICATION', None)
+
+        # Which fields should be displayed when registering new users?
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
+        # config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
+        # config.setdefault('STORMPATH_ENABLE_EMAIL', True)  # If this is diabled,
+                                                           # only social login can
+                                                           # be used.
+
+        # Will new users be required to verify new accounts via email before
+        # they're made active?
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_VERIFY_EMAIL', False)
+
+        # Configure URL mappings.  These URL mappings control which URLs will be
+        # used by Flask-Stormpath views.
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
+        # config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
+
+        # After a successful login, where should users be redirected?
+        config.setdefault('STORMPATH_REDIRECT_URL', '/')
+
+        # Cache configuration.
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_CACHE', None)
+
+        # Configure templates.  These template settings control which templates are
+        # used to render the Flask-Stormpath views.
+        # FIXME: some of the settings break the code because they're not in the spec
+        # config.setdefault('STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
+        config.setdefault('STORMPATH_REGISTRATION_TEMPLATE', 'flask_stormpath/register.html')
+        config.setdefault('STORMPATH_LOGIN_TEMPLATE', 'flask_stormpath/login.html')
+        config.setdefault('STORMPATH_FORGOT_PASSWORD_TEMPLATE', 'flask_stormpath/forgot.html')
+        # config.setdefault('STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE', 'flask_stormpath/forgot_email_sent.html')
+        config.setdefault('STORMPATH_FORGOT_PASSWORD_CHANGE_TEMPLATE', 'flask_stormpath/forgot_change.html')
+        # config.setdefault('STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE', 'flask_stormpath/forgot_complete.html')
+
+        # Social login configuration.
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_SOCIAL', {})
+
+        # Cookie configuration.
+        # FIXME: this breaks the code because it's not in the spec
+        # config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
+        # config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
+
+        # Cookie name (this is not overridable by users, at least not explicitly).
+        config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
+
+        for key, value in config.items():
+            if key.startswith(config['stormpath'].STORMPATH_PREFIX):
+                config['stormpath'][key] = value
+
+        # If the user is specifying their credentials via a file path,
+        # we'll use this.
+        if self.app.config['stormpath']['client']['apiKey']['file']:
+            stormpath_client = Client(
+                api_key_file_location=self.app.config['stormpath']['client']['apiKey']['file'],
+            )
+
+        # If the user isn't specifying their credentials via a file
+        # path, it means they're using environment variables, so we'll
+        # try to grab those values.
+        else:
+            stormpath_client = Client(
+                id=self.app.config['stormpath']['client']['apiKey']['id'],
+                secret=self.app.config['stormpath']['client']['apiKey']['secret'],
+            )
+
+        ecfrcs = EnrichClientFromRemoteConfigStrategy(
+            client_factory=lambda client: stormpath_client)
+        ecfrcs.process(self.app.config['stormpath'])
+        eifrcs = EnrichIntegrationFromRemoteConfigStrategy(
+            client_factory=lambda client: stormpath_client)
+        eifrcs.process(self.app.config['stormpath'])
+
+    def check_settings(self, config):
+        """
+        Ensure the user-specified settings are valid.
+
+        This will raise a ConfigurationError if anything mandatory is not
+        specified.
+
+        :param dict config: The Flask app config.
+        """
+        # FIXME: this needs to be uncommented based on settings in init_settings
+        # if config['STORMPATH_ENABLE_GOOGLE']:
+        #     google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
+
+        #     if not google_config or not all([
+        #         google_config.get('client_id'),
+        #         google_config.get('client_secret'),
+        #     ]):
+        #         raise ConfigurationError('You must define your Google app settings.')
+
+        # if config['STORMPATH_ENABLE_FACEBOOK']:
+        #     facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
+
+        #     if not facebook_config or not all([
+        #         facebook_config,
+        #         facebook_config.get('app_id'),
+        #         facebook_config.get('app_secret'),
+        #     ]):
+        #         raise ConfigurationError('You must define your Facebook app settings.')
+
+        # if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(config['STORMPATH_COOKIE_DOMAIN'], str):
+        #     raise ConfigurationError('STORMPATH_COOKIE_DOMAIN must be a string.')
+
+        # if config['STORMPATH_COOKIE_DURATION'] and not isinstance(config['STORMPATH_COOKIE_DURATION'], timedelta):
+        #     raise ConfigurationError('STORMPATH_COOKIE_DURATION must be a timedelta object.')
 
     def init_login(self, app):
         """
@@ -226,11 +383,12 @@ class StormpathManager(object):
 
                 # If the user is specifying their credentials via a file path,
                 # we'll use this.
-                if self.app.config['STORMPATH_API_KEY_FILE']:
+                if self.app.config['stormpath']['apiKey']['file']:
                     ctx.stormpath_client = Client(
-                        api_key_file_location=self.app.config['STORMPATH_API_KEY_FILE'],
+                        api_key_file_location=self.app.config['stormpath']['apiKey']['file'],
                         user_agent=user_agent,
-                        cache_options=self.app.config['STORMPATH_CACHE'],
+                        # FIXME: read cache from config
+                        # cache_options=self.app.config['STORMPATH_CACHE'],
                     )
 
                 # If the user isn't specifying their credentials via a file
@@ -238,10 +396,11 @@ class StormpathManager(object):
                 # try to grab those values.
                 else:
                     ctx.stormpath_client = Client(
-                        id=self.app.config['STORMPATH_API_KEY_ID'],
-                        secret=self.app.config['STORMPATH_API_KEY_SECRET'],
+                        id=self.app.config['stormpath']['apiKey']['id'],
+                        secret=self.app.config['stormpath']['apiKey']['secret'],
                         user_agent=user_agent,
-                        cache_options=self.app.config['STORMPATH_CACHE'],
+                        # FIXME: read cache from config
+                        # cache_options=self.app.config['STORMPATH_CACHE'],
                     )
 
             return ctx.stormpath_client
@@ -271,7 +430,7 @@ class StormpathManager(object):
         if ctx is not None:
             if not hasattr(ctx, 'stormpath_application'):
                 ctx.stormpath_application = self.client.applications.search(
-                    self.app.config['STORMPATH_APPLICATION']
+                    self.app.config['stormpath']['application']['name']
                 )[0]
 
             return ctx.stormpath_application

@@ -31,6 +31,7 @@ class StormpathTestCase(TestCase):
         self.client = bootstrap_client()
         self.application = bootstrap_app(self.client)
         self.app = bootstrap_flask_app(self.application)
+        self.manager = StormpathManager(self.app)
 
     def tearDown(self):
         """Destroy all provisioned Stormpath resources."""
@@ -101,6 +102,5 @@ def bootstrap_flask_app(app):
     a.config['STORMPATH_API_KEY_SECRET'] = environ.get('STORMPATH_API_KEY_SECRET')
     a.config['STORMPATH_APPLICATION'] = app.name
     a.config['WTF_CSRF_ENABLED'] = False
-    StormpathManager(a)
 
     return a

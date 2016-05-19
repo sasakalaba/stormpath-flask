@@ -7,7 +7,7 @@ from tempfile import mkstemp
 
 from flask.ext.stormpath.errors import ConfigurationError
 from flask.ext.stormpath.settings import (
-    StormpathSettings, check_settings, init_settings)
+    StormpathSettings)#, check_settings, init_settings)
 
 from .helpers import StormpathTestCase
 from unittest import skip
@@ -17,7 +17,7 @@ class TestInitSettings(StormpathTestCase):
     """Ensure we can properly initialize Flask app settings."""
 
     def test_works(self):
-        init_settings(self.app.config)
+        self.manager.init_settings(self.app.config)
 
         # Ensure a couple of settings exist that we didn't explicitly specify
         # anywhere.
@@ -25,7 +25,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertEqual(self.app.config['stormpath']['STORMPATH_WEB_LOGIN_ENABLED'], True)
 
     def test_helpers(self):
-        init_settings(self.app.config)
+        self.manager.init_settings(self.app.config)
         settings = self.app.config['stormpath']
 
         self.assertEqual(settings._from_camel('givenName'), 'GIVEN_NAME')
@@ -55,7 +55,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertEqual(node[child], settings.store['application']['name'])
 
     def test_settings_init(self):
-        init_settings(self.app.config)
+        self.manager.init_settings(self.app.config)
         settings = self.app.config['stormpath']
 
         # flattened settings with direct mapping
@@ -93,7 +93,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertEqual(settings['web'], 'StormWebSetting')
 
     def test_get(self):
-        init_settings(self.app.config)
+        self.manager.init_settings(self.app.config)
         settings = self.app.config['stormpath']
 
         register_setting = {
@@ -124,7 +124,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertEqual(settings['web']['register'], register_setting)
 
     def test_del(self):
-        init_settings(self.app.config)
+        self.manager.init_settings(self.app.config)
         settings = self.app.config['stormpath']
         register_setting = {
             'enabled': True,
