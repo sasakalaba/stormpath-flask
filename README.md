@@ -2,9 +2,9 @@
 
 Build simple, secure web applications with Stormpath and Flask!
 
-[![Latest Version](https://pypip.in/version/Flask-Stormpath/badge.png)](https://pypi.python.org/pypi/Flask-Stormpath/)
-[![Downloads](https://pypip.in/download/Flask-Stormpath/badge.png)](https://pypi.python.org/pypi/Flask-Stormpath/)
-[![Build Status](https://travis-ci.org/stormpath/stormpath-flask.png?branch=master)](https://travis-ci.org/stormpath/stormpath-flask)
+[![Latest Version](https://img.shields.io/pypi/v/flask-stormpath.svg)](https://pypi.python.org/pypi/Flask-Stormpath/)
+[![Downloads](https://img.shields.io/pypi/dm/flask-stormpath.svg)](https://pypi.python.org/pypi/Flask-Stormpath/)
+[![Build Status](https://img.shields.io/travis/stormpath/stormpath-flask.svg)](https://travis-ci.org/stormpath/stormpath-flask)
 
 
 ## Documentation

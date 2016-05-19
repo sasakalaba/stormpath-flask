@@ -37,27 +37,27 @@ class RunTests(Command):
 
 
 setup(
-    name='Flask-Stormpath',
-    version='0.4.4',
-    url='https://github.com/stormpath/stormpath-flask',
-    license='Apache',
-    author='Stormpath, Inc.',
-    author_email='python@stormpath.com',
-    description='Simple and secure user authentication for Flask via Stormpath.',
-    long_description=__doc__,
-    packages=['flask_stormpath'],
-    cmdclass={'test': RunTests},
-    zip_saf=False,
-    include_package_data=True,
-    platforms='any',
-    install_requires=[
+    name = 'Flask-Stormpath',
+    version = '0.4.5',
+    url = 'https://github.com/stormpath/stormpath-flask',
+    license = 'Apache',
+    author = 'Stormpath, Inc.',
+    author_email = 'python@stormpath.com',
+    description = 'Simple and secure user authentication for Flask via Stormpath.',
+    long_description = __doc__,
+    packages = ['flask_stormpath'],
+    cmdclass = {'test': RunTests},
+    zip_safe = False,
+    include_package_data = True,
+    platforms = 'any',
+    install_requires = [
         'Flask>=0.9.0',
-        'Flask-Login==0.2.9',
+        'Flask-Login==0.3.2',
         'Flask-WTF>=0.9.5',
         'facebook-sdk==0.4.0',
-        'oauth2client==1.2',
-        'stormpath==2.1.1',
-        'blinker==1.3'
+        'oauth2client==1.5.2',
+        'stormpath==2.1.6',
+        'blinker==1.4'
     ],
     dependency_links=[
         'git+git://github.com/pythonforfacebook/facebook-sdk.git@e65d06158e48388b3932563f1483ca77065951b3#egg=facebook-sdk-1.0.0-alpha',
@@ -73,5 +73,12 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Session',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
 )
