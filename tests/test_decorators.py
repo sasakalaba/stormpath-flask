@@ -8,7 +8,7 @@ from .helpers import StormpathTestCase
 from unittest import skip
 
 
-@skip('StormpathManager.client STORMPATH_API_KEY_FILE ::KeyError::')
+@skip('StormpathForm.data (returns empty {}) ::AttributeError::')
 class TestGroupsRequired(StormpathTestCase):
 
     def setUp(self):

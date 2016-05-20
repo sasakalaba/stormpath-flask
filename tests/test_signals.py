@@ -42,10 +42,7 @@ class TestSignals(StormpathTestCase):
         self.assertEqual(created_user['email'], 'r@rdegges.com')
         self.assertEqual(created_user['surname'], 'Degges')
 
-    """
     @skip('StormpathForm.data (returns empty {}) ::AttributeError::')
-    """
-    @skip('StormpathManager.client STORMPATH_API_KEY_FILE ::KeyError::')
     def test_user_logged_in_signal(self):
         # Subscribe to signals for user login
         signal_receiver = SignalReceiver()
@@ -79,7 +76,6 @@ class TestSignals(StormpathTestCase):
         self.assertEqual(logged_in_user.email, 'r@rdegges.com')
         self.assertEqual(logged_in_user.surname, 'Degges')
 
-    @skip('StormpathManager.client STORMPATH_API_KEY_FILE ::KeyError::')
     def test_user_is_updated_signal(self):
         # Subscribe to signals for user update
         signal_receiver = SignalReceiver()
@@ -108,7 +104,6 @@ class TestSignals(StormpathTestCase):
         self.assertEqual(updated_user['email'], 'r@rdegges.com')
         self.assertEqual(updated_user['middle_name'], 'Clark')
 
-    @skip('StormpathManager.client STORMPATH_API_KEY_FILE ::KeyError::')
     def test_user_is_deleted_signal(self):
         # Subscribe to signals for user delete
         signal_receiver = SignalReceiver()
