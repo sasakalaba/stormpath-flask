@@ -161,13 +161,6 @@ class StormpathManager(object):
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
 
-        # Most of the settings are used for backwards compatibility.
-        config.setdefault('STORMPATH_API_KEY_ID', None)
-        config.setdefault('STORMPATH_API_KEY_SECRET', None)
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_API_KEY_FILE', None)
-        config.setdefault('STORMPATH_APPLICATION', None)
-
         # Which fields should be displayed when registering new users?
         # FIXME: this breaks the code because it's not in the spec
         # config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
@@ -175,11 +168,6 @@ class StormpathManager(object):
         # config.setdefault('STORMPATH_ENABLE_EMAIL', True)  # If this is diabled,
                                                            # only social login can
                                                            # be used.
-
-        # Will new users be required to verify new accounts via email before
-        # they're made active?
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_VERIFY_EMAIL', False)
 
         # Configure URL mappings.  These URL mappings control which URLs will be
         # used by Flask-Stormpath views.
@@ -198,8 +186,6 @@ class StormpathManager(object):
         # used to render the Flask-Stormpath views.
         # FIXME: some of the settings break the code because they're not in the spec
         # config.setdefault('STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
-        config.setdefault('STORMPATH_REGISTRATION_TEMPLATE', 'flask_stormpath/register.html')
-        config.setdefault('STORMPATH_LOGIN_TEMPLATE', 'flask_stormpath/login.html')
         config.setdefault('STORMPATH_FORGOT_PASSWORD_TEMPLATE', 'flask_stormpath/forgot.html')
         # config.setdefault('STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE', 'flask_stormpath/forgot_email_sent.html')
         config.setdefault('STORMPATH_FORGOT_PASSWORD_CHANGE_TEMPLATE', 'flask_stormpath/forgot_change.html')
