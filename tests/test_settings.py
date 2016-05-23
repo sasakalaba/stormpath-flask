@@ -171,10 +171,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
-"""
-@skip('ConfigurationError not raised in StormpathManager.check_settings')
-"""
-@skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
+
 class TestCheckSettings(StormpathTestCase):
     """Ensure our settings checker is working properly."""
 
@@ -190,6 +187,7 @@ class TestCheckSettings(StormpathTestCase):
         write(self.fd, api_key_id.encode('utf-8') + b'\n')
         write(self.fd, api_key_secret.encode('utf-8') + b'\n')
 
+    @skip('ConfigurationError not raised in StormpathManager.check_settings')
     def test_requires_api_credentials(self):
         # We'll remove our default API credentials, and ensure we get an
         # exception raised.
@@ -211,6 +209,7 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_API_KEY_FILE'] = self.file
         self.manager.check_settings(self.app.config)
 
+    @skip('ConfigurationError not raised in StormpathManager.check_settings')
     def test_requires_application(self):
         # We'll remove our default Application, and ensure we get an exception
         # raised.
@@ -218,6 +217,7 @@ class TestCheckSettings(StormpathTestCase):
         self.assertRaises(ConfigurationError, self.manager.check_settings,
             self.app.config)
 
+    @skip('STORMPATH_SOCIAL not in config ::KeyError::')
     def test_google_settings(self):
         # Ensure that if the user has Google login enabled, they've specified
         # the correct settings.
@@ -242,6 +242,7 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_secret'] = 'xxx'
         self.manager.check_settings(self.app.config)
 
+    @skip('STORMPATH_SOCIAL not in config ::KeyError::')
     def test_facebook_settings(self):
         # Ensure that if the user has Facebook login enabled, they've specified
         # the correct settings.
@@ -287,6 +288,7 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_COOKIE_DURATION'] = timedelta(minutes=1)
         self.manager.check_settings(self.app.config)
 
+    @skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
     def test_verify_email_autologin(self):
         # stormpath.web.register.autoLogin is true, but the default account
         # store of the specified application has the email verification
@@ -301,6 +303,7 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['register']['autoLogin'] = True
         self.manager.check_settings(self.app.config)
 
+    @skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
     def test_register_default_account_store(self):
         # stormpath.web.register.autoLogin is true, but the default account
         # store of the specified application has the email verification

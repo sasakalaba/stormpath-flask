@@ -15,7 +15,8 @@ from unittest import skip
 class TestSignals(StormpathTestCase):
     """Test signals."""
 
-    @skip('StormpathForm.data (returns empty {}) ::KeyError::')
+    @skip('No redirect on success (200 != 302) ::AssertionError::')
+    #@skip('Signal receiver empty' ::TypeError::)
     def test_user_created_signal(self):
         # Subscribe to signals for user creation
         signal_receiver = SignalReceiver()
