@@ -14,6 +14,10 @@ from flask import Flask
 from flask.ext.stormpath import StormpathManager
 from stormpath.client import Client
 
+# FIXME: setup a better way to load environment variables
+environ['STORMPATH_API_KEY_ID'] = '15O7VLV850461TYBRFP91KRR4'
+environ['STORMPATH_API_KEY_SECRET'] = '8Ao/UesWQVhVkE7LL7ZVApHWn/r0cygrrHaruh75ipk'
+
 
 class StormpathTestCase(TestCase):
     """

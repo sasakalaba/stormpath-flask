@@ -187,35 +187,40 @@ class TestCheckSettings(StormpathTestCase):
         write(self.fd, api_key_id.encode('utf-8') + b'\n')
         write(self.fd, api_key_secret.encode('utf-8') + b'\n')
 
-    @skip('ConfigurationError not raised in StormpathManager.check_settings')
     def test_requires_api_credentials(self):
         # We'll remove our default API credentials, and ensure we get an
         # exception raised.
-        self.app.config['STORMPATH_API_KEY_ID'] = None
-        self.app.config['STORMPATH_API_KEY_SECRET'] = None
-        self.app.config['STORMPATH_API_KEY_FILE'] = None
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.app.config['stormpath']['client']['apiKey']['id'] = None
+        self.app.config['stormpath']['client']['apiKey']['secret'] = None
+        self.app.config['stormpath']['client']['apiKey']['file'] = None
+        with self.assertRaises(ConfigurationError) as config_error:
+            self.manager.check_settings(self.app.config)
+        self.assertEqual(config_error.exception.message,
+            'You must define your Stormpath credentials.')
 
         # Now we'll check to see that if we specify an API key ID and secret
         # things work.
-        self.app.config['STORMPATH_API_KEY_ID'] = environ.get('STORMPATH_API_KEY_ID')
-        self.app.config['STORMPATH_API_KEY_SECRET'] = environ.get('STORMPATH_API_KEY_SECRET')
+        self.app.config['stormpath']['client']['apiKey']['id'] = environ.get(
+            'STORMPATH_API_KEY_ID')
+        self.app.config['stormpath']['client']['apiKey']['secret'] = environ.get(
+            'STORMPATH_API_KEY_SECRET')
         self.manager.check_settings(self.app.config)
 
         # Now we'll check to see that if we specify an API key file things work.
-        self.app.config['STORMPATH_API_KEY_ID'] = None
-        self.app.config['STORMPATH_API_KEY_SECRET'] = None
-        self.app.config['STORMPATH_API_KEY_FILE'] = self.file
+        self.app.config['stormpath']['client']['apiKey']['id'] = None
+        self.app.config['stormpath']['client']['apiKey']['secret'] = None
+        self.app.config['stormpath']['client']['apiKey']['file'] = self.file
         self.manager.check_settings(self.app.config)
 
-    @skip('ConfigurationError not raised in StormpathManager.check_settings')
     def test_requires_application(self):
         # We'll remove our default Application, and ensure we get an exception
         # raised.
-        self.app.config['STORMPATH_APPLICATION'] = None
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.app.config['stormpath']['application']['href'] = None
+        self.app.config['stormpath']['application']['name'] = None
+        with self.assertRaises(ConfigurationError) as config_error:
+            self.manager.check_settings(self.app.config)
+        self.assertEqual(config_error.exception.message,
+            'You must define your Stormpath application.')
 
     @skip('STORMPATH_SOCIAL not in config ::KeyError::')
     def test_google_settings(self):
@@ -288,34 +293,47 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_COOKIE_DURATION'] = timedelta(minutes=1)
         self.manager.check_settings(self.app.config)
 
-    @skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
     def test_verify_email_autologin(self):
         # stormpath.web.register.autoLogin is true, but the default account
         # store of the specified application has the email verification
         # workflow enabled. Auto login is only possible if email verification
         # is disabled
-        self.app.config['stormpath']['verifyEmail']['enabled'] = True
-        self.app.config['stormpath']['register']['autoLogin'] = True
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = True
+        self.app.config['stormpath']['web']['register']['autoLogin'] = True
+        with self.assertRaises(ConfigurationError) as config_error:
+            self.manager.check_settings(self.app.config)
+        self.assertEqual(config_error.exception.message,
+            ('Invalid configuration: stormpath.web.register.autoLogin is' +
+             ' true, but the default account store of the specified' +
+             ' application has the email verification workflow enabled.' +
+             ' Auto login is only possible if email verification is' +
+             ' disabled. Please disable this workflow on this' +
+             ' application\'s default account store.'))
 
         # Now that we've configured things properly, it should work.
-        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False
         self.manager.check_settings(self.app.config)
 
-    @skip('StormpathSettings mapping breaks the code (__getitem__) ::KeyError::')
+    @skip('This test is seemingly the same as the test_verify_email_autologin')
     def test_register_default_account_store(self):
         # stormpath.web.register.autoLogin is true, but the default account
         # store of the specified application has the email verification
         # workflow enabled. Auto login is only possible if email verification
         # is disabled
-        self.app.config['stormpath']['verifyEmail']['enabled'] = True
-        self.app.config['stormpath']['register']['autoLogin'] = True
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = True
+        self.app.config['stormpath']['web']['register']['autoLogin'] = True
+        with self.assertRaises(ConfigurationError) as config_error:
+            self.manager.check_settings(self.app.config)
+        self.assertEqual(config_error.exception.message,
+            ('Invalid configuration: stormpath.web.register.autoLogin is' +
+             ' true, but the default account store of the specified' +
+             ' application has the email verification workflow enabled.' +
+             ' Auto login is only possible if email verification is' +
+             ' disabled. Please disable this workflow on this' +
+             ' application\'s default account store.'))
 
         # Now that we've configured things properly, it should work.
-        self.app.config['stormpath']['register']['autoLogin'] = True
+        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False
         self.manager.check_settings(self.app.config)
 
     def tearDown(self):
