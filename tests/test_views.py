@@ -7,15 +7,30 @@ from .helpers import StormpathTestCase
 from unittest import skip
 
 
+class AppWrapper(object):
+    """
+    Helper class for injecting HTTP headers.
+    """
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        environ['HTTP_ACCEPT'] = ('text/html,application/xhtml+xml,' +
+            'application/xml;')
+        return self.app(environ, start_response)
+
+
 class TestRegister(StormpathTestCase):
     """Test our registration view."""
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
+    def setUp(self):
+        super(TestRegister, self).setUp()
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+
     def test_default_fields(self):
         # By default, we'll register new users with first name, last name,
         # email, and password.
         with self.app.test_client() as c:
-
             # Ensure that missing fields will cause a failure.
             resp = c.post('/register', data={
                 'email': 'r@rdegges.com',

@@ -65,6 +65,8 @@ def register():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    # FIXME ASAP: cannot initialize StormpathForm properly
+    form = RegistrationForm()
     form = RegistrationForm(csrf_enabled=False)
 
     # If we received a POST request with valid information, we'll continue
@@ -177,6 +179,8 @@ def login():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    # FIXME ASAP: cannot initialize StormpathForm properly
+    form = LoginForm()
     form = LoginForm(csrf_enabled=False)
 
     # If we received a POST request with valid information, we'll continue
