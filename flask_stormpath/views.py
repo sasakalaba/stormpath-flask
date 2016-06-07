@@ -72,26 +72,35 @@ def register():
     # If we received a POST request with valid information, we'll continue
     # processing.
     if form.validate_on_submit():
-        given_name_enabled = current_app.config['stormpath']['web'] \
-            ['register']['form']['fields']['givenName']['enabled']
-        given_name_required = current_app.config['stormpath']['web'] \
-            ['register']['form']['fields']['givenName']['required']
-        username_enabled = current_app.config['stormpath']['web'] \
-            ['register']['form']['fields']['username']
-        username_required = current_app.config['stormpath']['web'] \
-            ['register']['form']['fields']['username']
+        # We'll just set the field values to 'Anonymous' if the user
+        # has explicitly said they don't want to collect those fields.
 
-        if 'username' not in form.data:
-            if not username_enabled or not username_required:
-                form.data['username'] = 'UNKNOWN'
-        if 'given_name' not in form.data:
-            if not given_name_enabled or not given_name_required:
-                form.data['given_name'] = 'UNKNOWN'
+        field_properties = {}
+        optional_fields = ['given_name', 'middle_name', 'surname']
+        form_fields = (current_app.config['stormpath']['web']['register']
+            ['form']['fields'])
+
+        # Collect configuration settings for optional fields
+        for field in optional_fields:
+            field_properties[field] = {
+                'enabled': (form_fields[Resource.to_camel_case(field)]
+                    ['enabled']),
+                'required': (form_fields[Resource.to_camel_case(field)]
+                    ['required'])}
+
+        # Check if optional fields are enabled. If not, set them to 'Anonymous'
+        data = form.data
+        for field in optional_fields:
+            if field not in data:
+                if not field_properties[field]['enabled']:
+                    data[field] = 'Anonymous'
+            else:
+                if not data[field] and not field_properties[field]['required']:
+                    data[field] = 'Anonymous'
         fail = False
 
         # Iterate through all fields, grabbing the necessary form data and
         # flashing error messages if required.
-        data = form.data
         for field in data.keys():
             if current_app.config['stormpath']['web']['register']['form'][
                     'fields'][Resource.to_camel_case(field)]['enabled']:
@@ -140,10 +149,12 @@ def register():
                 redirect_url = current_app.config[
                     'stormpath']['web']['register']['nextUri']
                 if not redirect_url:
-                    redirect_url = current_app.config[
+                    login_redirect = current_app.config[
                         'stormpath']['web']['login']['nextUri']
-                else:
-                    redirect_url = '/'
+                    if login_redirect:
+                        redirect_url = login_redirect
+                    else:
+                        redirect_url = '/'
                 return redirect(redirect_url)
 
             except StormpathError as err:

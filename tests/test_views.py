@@ -4,6 +4,8 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
+from flask_stormpath.forms import RegistrationForm
+from stormpath.resources import Resource
 from unittest import skip
 
 
@@ -26,10 +28,12 @@ class TestRegister(StormpathTestCase):
     def setUp(self):
         super(TestRegister, self).setUp()
         self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+        self.form_fields = (self.app.config['stormpath']['web']['register']
+            ['form']['fields'])
 
     def test_default_fields(self):
-        # By default, we'll register new users with first name, last name,
-        # email, and password.
+        # By default, we'll register new users with username, first name,
+        # last name, email, and password.
         with self.app.test_client() as c:
             # Ensure that missing fields will cause a failure.
             resp = c.post('/register', data={
@@ -40,24 +44,21 @@ class TestRegister(StormpathTestCase):
 
             # Ensure that valid fields will result in a success.
             resp = c.post('/register', data={
+                'username': 'randalldeg',
                 'given_name': 'Randall',
-                'middle_name': 'Clark',
                 'surname': 'Degges',
                 'email': 'r@rdegges.com',
                 'password': 'woot1LoveCookies!',
             })
             self.assertEqual(resp.status_code, 302)
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
     def test_disable_all_except_mandatory(self):
         # Here we'll disable all the fields except for the mandatory fields:
         # email and password.
-        self.app.config['STORMPATH_ENABLE_GIVEN_NAME'] = False
-        self.app.config['STORMPATH_ENABLE_MIDDLE_NAME'] = False
-        self.app.config['STORMPATH_ENABLE_SURNAME'] = False
+        for field in ['givenName', 'middleName', 'surname', 'username']:
+            self.form_fields[field]['enabled'] = False
 
         with self.app.test_client() as c:
-
             # Ensure that missing fields will cause a failure.
             resp = c.post('/register', data={
                 'email': 'r@rdegges.com',
@@ -71,21 +72,18 @@ class TestRegister(StormpathTestCase):
             })
             self.assertEqual(resp.status_code, 302)
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
     def test_require_settings(self):
         # Here we'll change our backend behavior such that users *can* enter a
-        # first and last name, but they aren't required server side.
-        # email and password.
-        self.app.config['STORMPATH_REQUIRE_GIVEN_NAME'] = False
-        self.app.config['STORMPATH_REQUIRE_SURNAME'] = False
+        # username, first and last name, but they aren't required server side.
+        for field in ['givenName', 'surname', 'username']:
+            self.form_fields[field]['required'] = False
 
         with self.app.test_client() as c:
-
             # Ensure that registration works *without* given name and surname
             # since they aren't required.
             resp = c.post('/register', data={
                 'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'password': 'woot1LoveCookies!'
             })
             self.assertEqual(resp.status_code, 302)
 
@@ -94,12 +92,15 @@ class TestRegister(StormpathTestCase):
             user = User.from_login('r@rdegges.com', 'woot1LoveCookies!')
             self.assertEqual(user.given_name, 'Anonymous')
             self.assertEqual(user.surname, 'Anonymous')
+            self.assertEqual(user.username, user.email)
 
-    @skip('Response data does not contain the appropriate error messages.' +
-        '::AssertionError::')
     def test_error_messages(self):
-        with self.app.test_client() as c:
 
+        # We don't need a username field for this test. We'll disable it
+        # so the form can be valid.
+        self.form_fields['username']['enabled'] = False
+
+        with self.app.test_client() as c:
             # Ensure that an error is raised if an invalid password is
             # specified.
             resp = c.post('/register', data={
@@ -122,7 +123,6 @@ class TestRegister(StormpathTestCase):
                 'password': 'hilolwoot1',
             })
             self.assertEqual(resp.status_code, 200)
-
             self.assertTrue(
                 'Password requires at least 1 uppercase character.' in
                 resp.data.decode('utf-8'))
@@ -141,57 +141,76 @@ class TestRegister(StormpathTestCase):
                 resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
     def test_redirect_to_login_and_register_url(self):
         # Setting redirect URL to something that is easy to check
         stormpath_redirect_url = '/redirect_for_login_and_registration'
-        self.app.config['STORMPATH_REDIRECT_URL'] = stormpath_redirect_url
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_redirect_url
+
+        # We're disabling the default register redirect so we can check if
+        # the login redirect will be applied
+        self.app.config['stormpath']['web']['register']['nextUri'] = None
+
+        # We don't need a username field for this test. We'll disable it
+        # so the form can be valid.
+        self.form_fields['username']['enabled'] = False
 
         with self.app.test_client() as c:
             # Ensure that valid registration will redirect to
             # STORMPATH_REDIRECT_URL
-            resp = c.post(
-                '/register',
-                data=
-                {
-                    'given_name': 'Randall',
-                    'middle_name': 'Clark',
-                    'surname': 'Degges',
-                    'email': 'r@rdegges.com',
-                    'password': 'woot1LoveCookies!',
-                })
+            resp = c.post('/register', data={
+                'given_name': 'Randall',
+                'middle_name': 'Clark',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'woot1LoveCookies!',
+            })
 
             self.assertEqual(resp.status_code, 302)
             location = resp.headers.get('location')
             self.assertTrue(stormpath_redirect_url in location)
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
     def test_redirect_to_register_url(self):
         # Setting redirect URLs to something that is easy to check
         stormpath_redirect_url = '/redirect_for_login'
         stormpath_registration_redirect_url = '/redirect_for_registration'
-        self.app.config['STORMPATH_REDIRECT_URL'] = stormpath_redirect_url
-        self.app.config['STORMPATH_REGISTRATION_REDIRECT_URL'] = \
-            stormpath_registration_redirect_url
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_redirect_url
+        (self.app.config['stormpath']['web']['register']
+            ['nextUri']) = stormpath_registration_redirect_url
+
+        # We don't need a username field for this test. We'll disable it
+        # so the form can be valid.
+        self.form_fields['username']['enabled'] = False
 
         with self.app.test_client() as c:
             # Ensure that valid registration will redirect to
-            # STORMPATH_REGISTRATION_REDIRECT_URL if it exists
-            resp = c.post(
-                '/register',
-                data=
-                {
-                    'given_name': 'Randall',
-                    'middle_name': 'Clark',
-                    'surname': 'Degges',
-                    'email': 'r@rdegges.com',
-                    'password': 'woot1LoveCookies!',
-                })
+            # ['stormpath']['web']['register']['nextUri'] if it exists
+            resp = c.post('/register', data={
+                'given_name': 'Randall',
+                'middle_name': 'Clark',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'woot1LoveCookies!',
+            })
 
             self.assertEqual(resp.status_code, 302)
             location = resp.headers.get('location')
             self.assertFalse(stormpath_redirect_url in location)
             self.assertTrue(stormpath_registration_redirect_url in location)
+
+    def tearDown(self):
+        """Remove every attribute added by StormpathForm, so as not to cause
+        invalid form on consecutive tests."""
+        form_config = (self.app.config['stormpath']['web']['register']
+            ['form'])
+        field_order = form_config['fieldOrder']
+        field_list = form_config['fields']
+
+        for field in field_order:
+            if field_list[field]['enabled']:
+                delattr(RegistrationForm, Resource.from_camel_case(field))
+        super(TestRegister, self).tearDown()
 
 
 @skip('StormpathForm.data (returns empty {}) ::AttributeError::')
