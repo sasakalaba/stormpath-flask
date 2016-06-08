@@ -213,9 +213,14 @@ class TestRegister(StormpathTestCase):
         super(TestRegister, self).tearDown()
 
 
-@skip('StormpathForm.data (returns empty {}) ::AttributeError::')
 class TestLogin(StormpathTestCase):
     """Test our login view."""
+
+    def setUp(self):
+        super(TestLogin, self).setUp()
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+        self.form_fields = (self.app.config['stormpath']['web']['login']
+            ['form']['fields'])
 
     def test_email_login(self):
         # Create a user.
@@ -291,13 +296,15 @@ class TestLogin(StormpathTestCase):
 
         # Setting redirect URL to something that is easy to check
         stormpath_redirect_url = '/redirect_for_login_and_registration'
-        self.app.config['STORMPATH_REDIRECT_URL'] = stormpath_redirect_url
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_redirect_url
 
         with self.app.test_client() as c:
             # Attempt a login using username and password.
-            resp = c.post(
-                '/login',
-                data={'login': 'rdegges', 'password': 'woot1LoveCookies!',})
+            resp = c.post('/login', data={
+                'login': 'rdegges',
+                'password': 'woot1LoveCookies!'
+            })
 
             self.assertEqual(resp.status_code, 302)
             location = resp.headers.get('location')
@@ -317,15 +324,17 @@ class TestLogin(StormpathTestCase):
         # Setting redirect URLs to something that is easy to check
         stormpath_redirect_url = '/redirect_for_login'
         stormpath_registration_redirect_url = '/redirect_for_registration'
-        self.app.config['STORMPATH_REDIRECT_URL'] = stormpath_redirect_url
-        self.app.config['STORMPATH_REGISTRATION_REDIRECT_URL'] = \
-            stormpath_registration_redirect_url
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_redirect_url
+        (self.app.config['stormpath']['web']['register']
+            ['nextUri']) = stormpath_registration_redirect_url
 
         with self.app.test_client() as c:
             # Attempt a login using username and password.
-            resp = c.post(
-                '/login',
-                data={'login': 'rdegges', 'password': 'woot1LoveCookies!',})
+            resp = c.post('/login', data={
+                'login': 'rdegges',
+                'password': 'woot1LoveCookies!'
+            })
 
             self.assertEqual(resp.status_code, 302)
             location = resp.headers.get('location')

@@ -224,7 +224,7 @@ def login():
                         'error': err.status if err.status else 400,
                         'message': err.user_message
                     }))
-            flash(err.message)
+            flash(err.message.get('message'))
 
     if request_wants_json():
         return make_stormpath_response(data=form.json)
