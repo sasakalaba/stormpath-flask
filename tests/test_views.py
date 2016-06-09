@@ -95,7 +95,6 @@ class TestRegister(StormpathTestCase):
             self.assertEqual(user.username, user.email)
 
     def test_error_messages(self):
-
         # We don't need a username field for this test. We'll disable it
         # so the form can be valid.
         self.form_fields['username']['enabled'] = False

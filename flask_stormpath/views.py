@@ -74,29 +74,10 @@ def register():
     if form.validate_on_submit():
         # We'll just set the field values to 'Anonymous' if the user
         # has explicitly said they don't want to collect those fields.
-
-        field_properties = {}
-        optional_fields = ['given_name', 'middle_name', 'surname']
-        form_fields = (current_app.config['stormpath']['web']['register']
-            ['form']['fields'])
-
-        # Collect configuration settings for optional fields
-        for field in optional_fields:
-            field_properties[field] = {
-                'enabled': (form_fields[Resource.to_camel_case(field)]
-                    ['enabled']),
-                'required': (form_fields[Resource.to_camel_case(field)]
-                    ['required'])}
-
-        # Check if optional fields are enabled. If not, set them to 'Anonymous'
         data = form.data
-        for field in optional_fields:
-            if field not in data:
-                if not field_properties[field]['enabled']:
-                    data[field] = 'Anonymous'
-            else:
-                if not data[field] and not field_properties[field]['required']:
-                    data[field] = 'Anonymous'
+        for field in ['given_name', 'surname']:
+            if field not in data or not data[field]:
+                data[field] = 'Anonymous'
         fail = False
 
         # Iterate through all fields, grabbing the necessary form data and
@@ -146,14 +127,13 @@ def register():
                     return make_stormpath_response(
                         data=json.dumps(account_data))
 
+                # Set redirect priority
                 redirect_url = current_app.config[
                     'stormpath']['web']['register']['nextUri']
                 if not redirect_url:
-                    login_redirect = current_app.config[
-                        'stormpath']['web']['login']['nextUri']
-                    if login_redirect:
-                        redirect_url = login_redirect
-                    else:
+                    redirect_url = current_app.config['stormpath'][
+                        'web']['login']['nextUri']
+                    if not redirect_url:
                         redirect_url = '/'
                 return redirect(redirect_url)
 
