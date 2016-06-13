@@ -100,6 +100,22 @@ class TestRegister(StormpathTestCase):
         self.form_fields['username']['enabled'] = False
 
         with self.app.test_client() as c:
+            # Ensure that an error is raised if a required field is left
+            # empty.
+            resp = c.post('/register', data={
+                'given_name': '',
+                'surname': '',
+                'email': 'r@rdegges.com',
+                'password': 'hilol',
+            })
+            self.assertEqual(resp.status_code, 200)
+
+            self.assertTrue('First Name is required.' in
+                resp.data.decode('utf-8'))
+            self.assertTrue('Last Name is required.' in
+                resp.data.decode('utf-8'))
+            self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
+
             # Ensure that an error is raised if an invalid password is
             # specified.
             resp = c.post('/register', data={
