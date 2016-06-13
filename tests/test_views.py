@@ -4,7 +4,7 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
-from flask_stormpath.forms import RegistrationForm
+from flask_stormpath.forms import StormpathForm
 from stormpath.resources import Resource
 from unittest import skip
 
@@ -217,7 +217,7 @@ class TestRegister(StormpathTestCase):
 
         for field in field_order:
             if field_list[field]['enabled']:
-                delattr(RegistrationForm, Resource.from_camel_case(field))
+                delattr(StormpathForm, Resource.from_camel_case(field))
         super(TestRegister, self).tearDown()
 
 

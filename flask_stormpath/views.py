@@ -28,9 +28,8 @@ from . import StormpathError, logout_user
 from .forms import (
     ChangePasswordForm,
     ForgotPasswordForm,
-    LoginForm,
-    RegistrationForm,
-    VerificationForm
+    VerificationForm,
+    StormpathForm
 )
 from .models import User
 
@@ -65,9 +64,10 @@ def register():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
-    # FIXME ASAP: cannot initialize StormpathForm properly
-    form = RegistrationForm()
-    form = RegistrationForm(csrf_enabled=False)
+    # We cannot set fields dynamically in the __init__ method, so we'll
+    # create our class first, and then create the instance
+    form_config = current_app.config['stormpath']['web']['register']['form']
+    form = StormpathForm.append_fields(form_config)()
 
     # If we received a POST request with valid information, we'll continue
     # processing.
@@ -170,9 +170,10 @@ def login():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
-    # FIXME ASAP: cannot initialize StormpathForm properly
-    form = LoginForm()
-    form = LoginForm(csrf_enabled=False)
+    # We cannot set fields dynamically in the __init__ method, so we'll
+    # create our class first, and then create the instance
+    form_config = current_app.config['stormpath']['web']['login']['form']
+    form = StormpathForm.append_fields(form_config)()
 
     # If we received a POST request with valid information, we'll continue
     # processing.
