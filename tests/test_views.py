@@ -7,6 +7,7 @@ from .helpers import StormpathTestCase
 from flask_stormpath.forms import StormpathForm
 from stormpath.resources import Resource
 from unittest import skip
+from flask import session
 
 
 class AppWrapper(object):
@@ -189,6 +190,37 @@ class TestRegister(StormpathTestCase):
                 'confirm_password': 'Hilolwoothi1'
             })
             self.assertEqual(resp.status_code, 302)
+
+    def test_autologin(self):
+        # If the autologin option is enabled the user must be logged in after
+        # successful registration.
+        self.app.config['stormpath']['web']['register']['autoLogin'] = True
+        stormpath_register_redirect_url = '/redirect_for_registration'
+        (self.app.config['stormpath']['web']['register']
+            ['nextUri']) = stormpath_register_redirect_url
+
+        with self.app.test_client() as c:
+            resp = c.get('/register')
+            self.assertFalse('user_id' in session)
+
+            # Check that the user was redirected to the proper url and is
+            # logged in after successful registration
+            resp = c.post('/register', data={
+                'username': 'randalldeg',
+                'given_name': 'Randall',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'woot1LoveCookies!',
+            })
+
+            # Get our user that was just created
+            user = User.from_login('r@rdegges.com', 'woot1LoveCookies!')
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(stormpath_register_redirect_url in resp.location)
+            self.assertEqual(session['user_id'], user.href)
+
+            resp = c.get('/logout')
+            self.assertFalse('user_id' in session)
 
     def test_redirect_to_login_or_register_url(self):
         # Setting redirect URL to something that is easy to check

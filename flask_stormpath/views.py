@@ -102,7 +102,7 @@ def register():
                 # Stormpath login nextUri setting but only if autoLogin.
                 if (current_app.config['stormpath']['web']['register']
                     ['autoLogin'] and not current_app.config['stormpath']
-                        ['web']['register']['verifyEmail']['enabled']):
+                        ['web']['verifyEmail']['enabled']):
                     login_user(account, remember=True)
                 if request_wants_json():
                     account_data = {
