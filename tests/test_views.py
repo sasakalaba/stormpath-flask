@@ -31,6 +31,13 @@ class TestRegister(StormpathTestCase):
         self.form_fields = (self.app.config['stormpath']['web']['register']
             ['form']['fields'])
 
+    def test_get(self):
+        # Ensure that a get request will only render the template and skip
+        # form validation and users creation.
+        with self.app.test_client() as c:
+            resp = c.get('/register')
+            self.assertEqual(resp.status_code, 200)
+
     def test_default_fields(self):
         # By default, we'll register new users with username, first name,
         # last name, email, and password.
