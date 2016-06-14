@@ -33,9 +33,11 @@ class StormpathForm(Form):
         for field in field_order:
             if field_list[field]['enabled']:
                 validators = []
+                placeholder = field_list[field]['placeholder']
 
                 if field_list[field]['required']:
-                    validators.append(InputRequired())
+                    validators.append(InputRequired(
+                        message='%s is required.' % placeholder))
 
                 if field_list[field]['type'] == 'password':
                     field_class = PasswordField
@@ -48,7 +50,9 @@ class StormpathForm(Form):
                 else:
                     label = ''
 
-                placeholder = field_list[field]['placeholder']
+                if field == 'confirmPassword':
+                    validators.append(EqualTo(
+                        'password', message='Passwords do not match.'))
 
                 setattr(
                     cls, Resource.from_camel_case(field),

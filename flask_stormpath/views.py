@@ -75,25 +75,9 @@ def register():
     # processing.
 
         if not form.validate_on_submit():
-        # If form.data is not valid, that means there is a required field
-        # left blank. Iterate through every field, and flash error messages
-        # on the missing fields.
-            for field in data.keys():
-                if current_app.config['stormpath']['web']['register']['form'][
-                        'fields'][Resource.to_camel_case(field)]['enabled']:
-                    if current_app.config['stormpath']['web']['register']['form'][
-                            'fields'][Resource.to_camel_case(field)]['required'] \
-                            and not data[field]:
-
-                        # Manually override the terms for first / last name to make
-                        # errors more user friendly.
-                        if field == 'given_name':
-                            field = 'first name'
-
-                        elif field == 'surname':
-                            field = 'last name'
-
-                        flash('%s is required.' % field.replace('_', ' ').title())
+        # If form.data is not valid, flash error messages.
+            for field_error in form.errors.keys():
+                flash(form.errors[field_error][0])
 
         else:
             # We'll just set the field values to 'Anonymous' if the user
@@ -102,14 +86,9 @@ def register():
                 if field not in data or not data[field]:
                     data[field] = 'Anonymous'
 
-            # Check if `confirm_password` is enabled, and compare it to
-            # `password`
-            if ('confirm_password' in data and
-                    data.pop('confirm_password') != data['password']):
-                flash('Passwords do not match.')
-                return make_stormpath_response(
-                    template=current_app.config['stormpath']['web']['register']['template'],
-                    data={'form': form}, return_json=False)
+            # Remove the confirmation password so it won't cause an error
+                if 'confirm_password' in data:
+                    data.pop('confirm_password')
 
             # Attempt to create the user's account on Stormpath.
             try:
