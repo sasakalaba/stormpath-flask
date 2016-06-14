@@ -102,6 +102,15 @@ def register():
                 if field not in data or not data[field]:
                     data[field] = 'Anonymous'
 
+            # Check if `confirm_password` is enabled, and compare it to
+            # `password`
+            if ('confirm_password' in data and
+                    data.pop('confirm_password') != data['password']):
+                flash('Passwords do not match.')
+                return make_stormpath_response(
+                    template=current_app.config['stormpath']['web']['register']['template'],
+                    data={'form': form}, return_json=False)
+
             # Attempt to create the user's account on Stormpath.
             try:
                 # Create the user account on Stormpath.  If this fails, an

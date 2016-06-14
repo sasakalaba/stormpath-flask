@@ -50,10 +50,6 @@ class StormpathForm(Form):
 
                 placeholder = field_list[field]['placeholder']
 
-                if field == 'confirmPassword':
-                    validators.append(
-                        EqualTo('password', message='Passwords must match'))
-
                 setattr(
                     cls, Resource.from_camel_case(field),
                     field_class(

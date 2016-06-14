@@ -163,6 +163,33 @@ class TestRegister(StormpathTestCase):
                 resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
+            # Ensure that an error is raised if confirm password is enabled
+            # the two passwords mismatch.
+            self.form_fields['confirmPassword']['enabled'] = True
+
+            resp = c.post('/register', data={
+                'given_name': 'Randall',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'Hilolwoothi1',
+                'confirm_password': 'Hilolwoothi1...NOT!!'
+            })
+            self.assertEqual(resp.status_code, 200)
+
+            self.assertTrue(
+                'Passwords do not match.' in resp.data.decode('utf-8'))
+            self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
+
+            # Ensure that matching passwords will result in a success.
+            resp = c.post('/register', data={
+                'given_name': 'Randall',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'Hilolwoothi1',
+                'confirm_password': 'Hilolwoothi1'
+            })
+            self.assertEqual(resp.status_code, 302)
+
     def test_redirect_to_login_or_register_url(self):
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
