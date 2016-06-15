@@ -64,10 +64,11 @@ def register():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    register_config = current_app.config['stormpath']['web']['register']
+
     # We cannot set fields dynamically in the __init__ method, so we'll
     # create our class first, and then create the instance
-    form_config = current_app.config['stormpath']['web']['register']['form']
-    form = StormpathForm.append_fields(form_config)()
+    form = StormpathForm.append_fields(register_config['form'])()
     data = form.data
 
     if request.method == 'POST':
@@ -100,9 +101,8 @@ def register():
                 # we'll log the user in (creating a secure session using
                 # Flask-Login), then redirect the user to the
                 # Stormpath login nextUri setting but only if autoLogin.
-                if (current_app.config['stormpath']['web']['register']
-                    ['autoLogin'] and not current_app.config['stormpath']
-                        ['web']['verifyEmail']['enabled']):
+                if (register_config['autoLogin'] and not current_app.config[
+                        'stormpath']['web']['verifyEmail']['enabled']):
                     login_user(account, remember=True)
                 if request_wants_json():
                     account_data = {
@@ -110,8 +110,7 @@ def register():
                     return make_stormpath_response(
                         data=json.dumps(account_data))
                 # Set redirect priority
-                redirect_url = current_app.config[
-                    'stormpath']['web']['register']['nextUri']
+                redirect_url = register_config['nextUri']
                 if not redirect_url:
                     redirect_url = current_app.config['stormpath'][
                         'web']['login']['nextUri']
@@ -136,8 +135,7 @@ def register():
                     'message': form.errors}))
         return make_stormpath_response(data=form.json)
 
-    return make_stormpath_response(
-        template=current_app.config['stormpath']['web']['register']['template'],
+    return make_stormpath_response(template=register_config['template'],
         data={'form': form}, return_json=False)
 
 
@@ -152,10 +150,11 @@ def login():
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    login_config = current_app.config['stormpath']['web']['login']
+
     # We cannot set fields dynamically in the __init__ method, so we'll
     # create our class first, and then create the instance
-    form_config = current_app.config['stormpath']['web']['login']['form']
-    form = StormpathForm.append_fields(form_config)()
+    form = StormpathForm.append_fields(login_config['form'])()
 
     # If we received a POST request with valid information, we'll continue
     # processing.
@@ -176,9 +175,8 @@ def login():
                 return make_stormpath_response(
                     data={'account': account_data})
 
-            return redirect(
-                request.args.get('next') or
-                current_app.config['stormpath']['web']['login']['nextUri'])
+            return redirect(request.args.get('next') or
+                login_config['nextUri'])
 
         except StormpathError as err:
             if request_wants_json():
@@ -192,8 +190,7 @@ def login():
     if request_wants_json():
         return make_stormpath_response(data=form.json)
 
-    return make_stormpath_response(
-        template=current_app.config['stormpath']['web']['login']['template'],
+    return make_stormpath_response(template=login_config['template'],
         data={'form': form}, return_json=False)
 
 
