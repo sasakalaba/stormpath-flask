@@ -68,7 +68,7 @@ def register():
 
     # We cannot set fields dynamically in the __init__ method, so we'll
     # create our class first, and then create the instance
-    form = StormpathForm.append_fields(register_config['form'])()
+    form = StormpathForm.specialize_form(register_config['form'])()
     data = form.data
 
     if request.method == 'POST':
@@ -154,7 +154,7 @@ def login():
 
     # We cannot set fields dynamically in the __init__ method, so we'll
     # create our class first, and then create the instance
-    form = StormpathForm.append_fields(login_config['form'])()
+    form = StormpathForm.specialize_form(login_config['form'])()
 
     # If we received a POST request with valid information, we'll continue
     # processing.

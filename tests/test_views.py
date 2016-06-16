@@ -4,8 +4,6 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
-from flask_stormpath.forms import StormpathForm
-from stormpath.resources import Resource
 from unittest import skip
 from flask import session
 
@@ -60,6 +58,23 @@ class TestRegister(StormpathTestCase):
             })
             self.assertEqual(resp.status_code, 302)
 
+    def test_confirm_password(self):
+        # Register a user with confirmPassword enabled.
+        self.form_fields['confirmPassword']['enabled'] = True
+
+        with self.app.test_client() as c:
+            # Ensure that confirmPassword will be popped from data before
+            # creating the new User instance.
+            resp = c.post('/register', data={
+                'username': 'randalldeg',
+                'given_name': 'Randall',
+                'surname': 'Degges',
+                'email': 'r@rdegges.com',
+                'password': 'woot1LoveCookies!',
+                'confirm_password': 'woot1LoveCookies!'
+            })
+            self.assertEqual(resp.status_code, 302)
+
     def test_disable_all_except_mandatory(self):
         # Here we'll disable all the fields except for the mandatory fields:
         # email and password.
@@ -108,20 +123,15 @@ class TestRegister(StormpathTestCase):
         self.form_fields['username']['enabled'] = False
 
         with self.app.test_client() as c:
-            # Ensure that an error is raised if a required field is left
-            # empty.
+            # Ensure that the form error is raised if the form is invalid.
             resp = c.post('/register', data={
-                'given_name': '',
-                'surname': '',
+                'surname': 'Degges',
                 'email': 'r@rdegges.com',
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
-
-            self.assertTrue('First Name is required.' in
-                resp.data.decode('utf-8'))
-            self.assertTrue('Last Name is required.' in
-                resp.data.decode('utf-8'))
+            self.assertTrue(
+                'First Name is required.' in resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
             # Ensure that an error is raised if an invalid password is
@@ -133,7 +143,6 @@ class TestRegister(StormpathTestCase):
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
-
             self.assertTrue(
                 'Account password minimum length not satisfied.' in
                 resp.data.decode('utf-8'))
@@ -163,33 +172,6 @@ class TestRegister(StormpathTestCase):
                 'Password requires at least 1 numeric character.' in
                 resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
-
-            # Ensure that an error is raised if confirm password is enabled
-            # the two passwords mismatch.
-            self.form_fields['confirmPassword']['enabled'] = True
-
-            resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'Hilolwoothi1',
-                'confirm_password': 'Hilolwoothi1...NOT!!'
-            })
-            self.assertEqual(resp.status_code, 200)
-
-            self.assertTrue(
-                'Passwords do not match.' in resp.data.decode('utf-8'))
-            self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
-
-            # Ensure that matching passwords will result in a success.
-            resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'Hilolwoothi1',
-                'confirm_password': 'Hilolwoothi1'
-            })
-            self.assertEqual(resp.status_code, 302)
 
     def test_autologin(self):
         # If the autologin option is enabled the user must be logged in after
@@ -288,19 +270,6 @@ class TestRegister(StormpathTestCase):
             location = resp.headers.get('location')
             self.assertFalse(stormpath_login_redirect_url in location)
             self.assertFalse(stormpath_register_redirect_url in location)
-
-    def tearDown(self):
-        """Remove every attribute added by StormpathForm, so as not to cause
-        invalid form on consecutive tests."""
-        form_config = (self.app.config['stormpath']['web']['register']
-            ['form'])
-        field_order = form_config['fieldOrder']
-        field_list = form_config['fields']
-
-        for field in field_order:
-            if field_list[field]['enabled']:
-                delattr(StormpathForm, Resource.from_camel_case(field))
-        super(TestRegister, self).tearDown()
 
 
 class TestLogin(StormpathTestCase):

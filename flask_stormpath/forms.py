@@ -1,32 +1,32 @@
 """Helper forms which make handling common operations simpler."""
 
-import json
-from collections import OrderedDict
 
-from flask import current_app
 from flask.ext.wtf import Form
 from wtforms.fields import PasswordField, StringField
-from wtforms.validators import InputRequired, ValidationError, EqualTo
+from wtforms.validators import InputRequired, ValidationError, EqualTo, Email
 from stormpath.resources import Resource
 
 
 class StormpathForm(Form):
     @classmethod
-    def append_fields(cls, config):
+    def specialize_form(basecls, config):
         """
         Dynamic form.
 
-        This class is used to set fields dynamically on our form class based
-        on the form fields settings from the config.
+        This class is used to set fields dynamically based on the form fields
+        settings from the config.
 
         .. note::
             This doesn't include support for Stormpath's social login stuff.
-
             Since social login stuff is handled separately (through
-            Javascript), we don't need to have a form for
-            registering/logging in users that way.
-
+            Javascript), we don't need to have a form for registering/logging
+            in users that way.
         """
+
+        class cls(basecls):
+            # Make sure that the original class is left unaltered.
+            pass
+
         field_list = config['fields']
         field_order = config['fieldOrder']
 
@@ -35,25 +35,33 @@ class StormpathForm(Form):
                 validators = []
                 placeholder = field_list[field]['placeholder']
 
+                # Apply validators.
                 if field_list[field]['required']:
                     validators.append(InputRequired(
                         message='%s is required.' % placeholder))
 
+                if field_list[field]['type'] == 'email':
+                    validators.append(Email(
+                        message='Email must be in valid format.'))
+
+                if field == 'confirmPassword':
+                    validators.append(EqualTo(
+                        'password', message='Passwords do not match.'))
+
+                # Apply field classes.
                 if field_list[field]['type'] == 'password':
                     field_class = PasswordField
                 else:
                     field_class = StringField
 
+                # Apply labels.
                 if 'label' in field_list[field] and isinstance(
                         field_list[field]['label'], str):
                     label = field_list[field]['label']
                 else:
                     label = ''
 
-                if field == 'confirmPassword':
-                    validators.append(EqualTo(
-                        'password', message='Passwords do not match.'))
-
+                # Finally, create our fields dynamically.
                 setattr(
                     cls, Resource.from_camel_case(field),
                     field_class(
