@@ -21,8 +21,10 @@ class TestInitSettings(StormpathTestCase):
 
         # Ensure a couple of settings exist that we didn't explicitly specify
         # anywhere.
-        self.assertEqual(self.app.config['stormpath']['STORMPATH_WEB_REGISTER_ENABLED'], True)
-        self.assertEqual(self.app.config['stormpath']['STORMPATH_WEB_LOGIN_ENABLED'], True)
+        self.assertEqual(self.app.config['stormpath'][
+            'STORMPATH_WEB_REGISTER_ENABLED'], True)
+        self.assertEqual(self.app.config['stormpath'][
+            'STORMPATH_WEB_LOGIN_ENABLED'], True)
 
     def test_helpers(self):
         self.manager.init_settings(self.app.config)
@@ -156,18 +158,20 @@ class TestInitSettings(StormpathTestCase):
         }
 
         settings = StormpathSettings(web=web_settings)
-        self.assertTrue(
-            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        self.assertTrue(settings['web']['register']['form']['fields'][
+            'givenName']['enabled'])
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
-        settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'] = False
-        self.assertFalse(
-            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        settings[
+            'STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'] = False
+        self.assertFalse(settings['web']['register']['form']['fields'][
+            'givenName']['enabled'])
         self.assertFalse(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
-        settings['web']['register']['form']['fields']['givenName']['enabled'] = True
-        self.assertTrue(
-            settings['web']['register']['form']['fields']['givenName']['enabled'])
+        settings[
+            'web']['register']['form']['fields']['givenName']['enabled'] = True
+        self.assertTrue(settings['web']['register']['form']['fields'][
+            'givenName']['enabled'])
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
@@ -195,18 +199,20 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['client']['apiKey']['file'] = None
         with self.assertRaises(ConfigurationError) as config_error:
             self.manager.check_settings(self.app.config)
-        self.assertEqual(config_error.exception.message,
+        self.assertEqual(
+            config_error.exception.message,
             'You must define your Stormpath credentials.')
 
         # Now we'll check to see that if we specify an API key ID and secret
         # things work.
         self.app.config['stormpath']['client']['apiKey']['id'] = environ.get(
             'STORMPATH_API_KEY_ID')
-        self.app.config['stormpath']['client']['apiKey']['secret'] = environ.get(
-            'STORMPATH_API_KEY_SECRET')
+        self.app.config['stormpath']['client']['apiKey'][
+            'secret'] = environ.get('STORMPATH_API_KEY_SECRET')
         self.manager.check_settings(self.app.config)
 
-        # Now we'll check to see that if we specify an API key file things work.
+        # Now we'll check to see that if we specify an API key file things
+        # work.
         self.app.config['stormpath']['client']['apiKey']['id'] = None
         self.app.config['stormpath']['client']['apiKey']['secret'] = None
         self.app.config['stormpath']['client']['apiKey']['file'] = self.file
@@ -219,7 +225,8 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['application']['name'] = None
         with self.assertRaises(ConfigurationError) as config_error:
             self.manager.check_settings(self.app.config)
-        self.assertEqual(config_error.exception.message,
+        self.assertEqual(
+            config_error.exception.message,
             'You must define your Stormpath application.')
 
     @skip('STORMPATH_SOCIAL not in config ::KeyError::')
@@ -227,21 +234,22 @@ class TestCheckSettings(StormpathTestCase):
         # Ensure that if the user has Google login enabled, they've specified
         # the correct settings.
         self.app.config['STORMPATH_ENABLE_GOOGLE'] = True
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
-        # Ensure that things don't work if not all social configs are specified.
+        # Ensure that things don't work if not all social configs are
+        # specified.
         self.app.config['STORMPATH_SOCIAL'] = {}
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         self.app.config['STORMPATH_SOCIAL'] = {'GOOGLE': {}}
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_id'] = 'xxx'
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_secret'] = 'xxx'
@@ -252,21 +260,22 @@ class TestCheckSettings(StormpathTestCase):
         # Ensure that if the user has Facebook login enabled, they've specified
         # the correct settings.
         self.app.config['STORMPATH_ENABLE_FACEBOOK'] = True
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
-        # Ensure that things don't work if not all social configs are specified.
+        # Ensure that things don't work if not all social configs are
+        # specified.
         self.app.config['STORMPATH_SOCIAL'] = {}
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         self.app.config['STORMPATH_SOCIAL'] = {'FACEBOOK': {}}
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         self.app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'] = 'xxx'
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'] = 'xxx'
@@ -276,8 +285,8 @@ class TestCheckSettings(StormpathTestCase):
         # Ensure that if a user specifies a cookie domain which isn't a string,
         # an error is raised.
         self.app.config['STORMPATH_COOKIE_DOMAIN'] = 1
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_COOKIE_DOMAIN'] = 'test'
@@ -286,8 +295,8 @@ class TestCheckSettings(StormpathTestCase):
         # Ensure that if a user specifies a cookie duration which isn't a
         # timedelta object, an error is raised.
         self.app.config['STORMPATH_COOKIE_DURATION'] = 1
-        self.assertRaises(ConfigurationError, self.manager.check_settings,
-            self.app.config)
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)
 
         # Now that we've configured things properly, it should work.
         self.app.config['STORMPATH_COOKIE_DURATION'] = timedelta(minutes=1)
@@ -302,13 +311,13 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['web']['register']['autoLogin'] = True
         with self.assertRaises(ConfigurationError) as config_error:
             self.manager.check_settings(self.app.config)
-        self.assertEqual(config_error.exception.message,
-            ('Invalid configuration: stormpath.web.register.autoLogin is' +
-             ' true, but the default account store of the specified' +
-             ' application has the email verification workflow enabled.' +
-             ' Auto login is only possible if email verification is' +
-             ' disabled. Please disable this workflow on this' +
-             ' application\'s default account store.'))
+        self.assertEqual(config_error.exception.message, (
+            'Invalid configuration: stormpath.web.register.autoLogin is' +
+            ' true, but the default account store of the specified' +
+            ' application has the email verification workflow enabled.' +
+            ' Auto login is only possible if email verification is' +
+            ' disabled. Please disable this workflow on this' +
+            ' application\'s default account store.'))
 
         # Now that we've configured things properly, it should work.
         self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False
@@ -324,13 +333,13 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['web']['register']['autoLogin'] = True
         with self.assertRaises(ConfigurationError) as config_error:
             self.manager.check_settings(self.app.config)
-        self.assertEqual(config_error.exception.message,
-            ('Invalid configuration: stormpath.web.register.autoLogin is' +
-             ' true, but the default account store of the specified' +
-             ' application has the email verification workflow enabled.' +
-             ' Auto login is only possible if email verification is' +
-             ' disabled. Please disable this workflow on this' +
-             ' application\'s default account store.'))
+        self.assertEqual(config_error.exception.message, (
+            'Invalid configuration: stormpath.web.register.autoLogin is' +
+            ' true, but the default account store of the specified' +
+            ' application has the email verification workflow enabled.' +
+            ' Auto login is only possible if email verification is' +
+            ' disabled. Please disable this workflow on this' +
+            ' application\'s default account store.'))
 
         # Now that we've configured things properly, it should work.
         self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False

@@ -21,8 +21,8 @@ environ['STORMPATH_API_KEY_SECRET'] = '8Ao/UesWQVhVkE7LL7ZVApHWn/r0cygrrHaruh75i
 
 class StormpathTestCase(TestCase):
     """
-    Custom test case which bootstraps a Stormpath client, application, and Flask
-    app.
+    Custom test case which bootstraps a Stormpath client, application, and
+    Flask app.
 
     This makes writing tests significantly easier as there's no work to do for
     setUp / tearDown.
@@ -87,7 +87,9 @@ def bootstrap_app(client):
     """
     return client.applications.create({
         'name': 'flask-stormpath-tests-%s' % uuid4().hex,
-        'description': 'This application is ONLY used for testing the Flask-Stormpath library. Please do not use this for anything serious.',
+        'description': 'This application is ONLY used for testing the ' +
+        'Flask-Stormpath library. Please do not use this for anything ' +
+        'serious.',
     }, create_directory=True)
 
 
@@ -103,7 +105,8 @@ def bootstrap_flask_app(app):
     a.config['DEBUG'] = True
     a.config['SECRET_KEY'] = uuid4().hex
     a.config['STORMPATH_API_KEY_ID'] = environ.get('STORMPATH_API_KEY_ID')
-    a.config['STORMPATH_API_KEY_SECRET'] = environ.get('STORMPATH_API_KEY_SECRET')
+    a.config['STORMPATH_API_KEY_SECRET'] = environ.get(
+        'STORMPATH_API_KEY_SECRET')
     a.config['STORMPATH_APPLICATION'] = app.name
     a.config['WTF_CSRF_ENABLED'] = False
 

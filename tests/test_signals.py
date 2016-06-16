@@ -52,11 +52,11 @@ class TestSignals(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             User.create(
-                username = 'rdegges',
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                username='rdegges',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         # Attempt a login using username and password.
@@ -86,10 +86,10 @@ class TestSignals(StormpathTestCase):
 
             # Ensure all requied fields are properly set.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
 
             user.middle_name = 'Clark'
@@ -114,10 +114,10 @@ class TestSignals(StormpathTestCase):
 
             # Ensure all requied fields are properly set.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
 
             user.delete()

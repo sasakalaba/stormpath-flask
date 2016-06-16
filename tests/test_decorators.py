@@ -20,10 +20,10 @@ class TestGroupsRequired(StormpathTestCase):
 
             # Create our Stormpath user.
             self.user = User.create(
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
             # Create two groups.

@@ -3,9 +3,7 @@
 
 from flask_stormpath.models import User
 from stormpath.resources.account import Account
-
 from .helpers import StormpathTestCase
-from unittest import skip
 
 
 class TestUser(StormpathTestCase):
@@ -14,10 +12,10 @@ class TestUser(StormpathTestCase):
     def test_subclass(self):
         with self.app.app_context():
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
 
             # Ensure that our lazy construction of the subclass works as
@@ -33,10 +31,10 @@ class TestUser(StormpathTestCase):
             # Ensure `email` is shown in the output if no `username` is
             # specified.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertTrue(user.email in user.__repr__())
 
@@ -45,11 +43,11 @@ class TestUser(StormpathTestCase):
 
             # Ensure `username` is shown in the output if specified.
             user = User.create(
-                username = 'omgrandall',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                username='omgrandall',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertTrue(user.username in user.__repr__())
 
@@ -59,10 +57,10 @@ class TestUser(StormpathTestCase):
     def test_get_id(self):
         with self.app.app_context():
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertEqual(user.get_id(), user.href)
 
@@ -71,10 +69,10 @@ class TestUser(StormpathTestCase):
 
             # Ensure users are active by default.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertEqual(user.is_active(), True)
 
@@ -95,10 +93,10 @@ class TestUser(StormpathTestCase):
             # anonymous users (that is a job better suited for a cache or
             # something).
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertEqual(user.is_anonymous(), False)
 
@@ -108,10 +106,10 @@ class TestUser(StormpathTestCase):
             # This should always return true.  If a user account can be
             # fetched, that means it must be authenticated.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertEqual(user.is_authenticated(), True)
 
@@ -120,10 +118,10 @@ class TestUser(StormpathTestCase):
 
             # Ensure all requied fields are properly set.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
             )
             self.assertEqual(user.email, 'r@rdegges.com')
             self.assertEqual(user.given_name, 'Randall')
@@ -142,13 +140,13 @@ class TestUser(StormpathTestCase):
 
             # Ensure all optional parameters are properly set.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
-                username = 'rdegges',
-                middle_name = 'Clark',
-                custom_data = {
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                username='rdegges',
+                middle_name='Clark',
+                custom_data={
                     'favorite_shows': ['Code Monkeys', 'The IT Crowd'],
                     'friends': ['Sami', 'Alven'],
                     'favorite_place': {
@@ -179,11 +177,11 @@ class TestUser(StormpathTestCase):
 
             # First we'll create a user.
             user = User.create(
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
-                given_name = 'Randall',
-                surname = 'Degges',
-                username = 'rdegges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                username='rdegges',
             )
             original_href = user.href
 

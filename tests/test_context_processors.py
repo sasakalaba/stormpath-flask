@@ -19,10 +19,10 @@ class TestUserContextProcessor(StormpathTestCase):
         # Create our Stormpath user.
         with self.app.app_context():
             self.user = User.create(
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
     def test_raw_works(self):

@@ -1,15 +1,8 @@
 """Our pluggable views."""
 
+
 import sys
 import json
-
-if sys.version_info.major == 3:
-    FACEBOOK = False
-else:
-    from facebook import get_user_from_cookie
-    FACEBOOK = True
-
-
 from flask import (
     abort,
     current_app,
@@ -22,16 +15,21 @@ from flask import (
 from flask.ext.login import login_user, login_required, current_user
 from six import string_types
 from stormpath.resources.provider import Provider
-from stormpath.resources import Resource, Expansion
+from stormpath.resources import Expansion
 
 from . import StormpathError, logout_user
 from .forms import (
     ChangePasswordForm,
     ForgotPasswordForm,
-    VerificationForm,
     StormpathForm
 )
 from .models import User
+
+if sys.version_info.major == 3:
+    FACEBOOK = False
+else:
+    from facebook import get_user_from_cookie
+    FACEBOOK = True
 
 
 def make_stormpath_response(data, template=None, return_json=True):
@@ -72,11 +70,11 @@ def register():
     data = form.data
 
     if request.method == 'POST':
-    # If we received a POST request with valid information, we'll continue
-    # processing.
+        # If we received a POST request with valid information, we'll continue
+        # processing.
 
         if not form.validate_on_submit():
-        # If form.data is not valid, flash error messages.
+            # If form.data is not valid, flash error messages.
             for field_error in form.errors.keys():
                 flash(form.errors[field_error][0])
 
@@ -135,8 +133,9 @@ def register():
                     'message': form.errors}))
         return make_stormpath_response(data=form.json)
 
-    return make_stormpath_response(template=register_config['template'],
-        data={'form': form}, return_json=False)
+    return make_stormpath_response(
+        template=register_config['template'], data={'form': form},
+        return_json=False)
 
 
 def login():
@@ -175,8 +174,8 @@ def login():
                 return make_stormpath_response(
                     data={'account': account_data})
 
-            return redirect(request.args.get('next') or
-                login_config['nextUri'])
+            return redirect(request.args.get('next') or login_config[
+                'nextUri'])
 
         except StormpathError as err:
             if request_wants_json():
@@ -190,8 +189,9 @@ def login():
     if request_wants_json():
         return make_stormpath_response(data=form.json)
 
-    return make_stormpath_response(template=login_config['template'],
-        data={'form': form}, return_json=False)
+    return make_stormpath_response(
+        template=login_config['template'], data={'form': form},
+        return_json=False)
 
 
 def forgot():
@@ -213,20 +213,24 @@ def forgot():
         try:
             # Try to fetch the user's account from Stormpath.  If this
             # fails, an exception will be raised.
-            account = current_app.stormpath_manager.application.send_password_reset_email(form.email.data)
+            account = (
+                current_app.stormpath_manager.application.
+                send_password_reset_email(form.email.data))
             account.__class__ = User
 
             # If we're able to successfully send a password reset email to this
             # user, we'll display a success page prompting the user to check
             # their inbox to complete the password reset process.
             return render_template(
-                current_app.config['STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE'],
+                current_app.config[
+                    'STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE'],
                 user=account,
             )
         except StormpathError as err:
             # If the error message contains 'https', it means something failed
             # on the network (network connectivity, most likely).
-            if isinstance(err.message, string_types) and 'https' in err.message.lower():
+            if (isinstance(err.message, string_types) and
+                    'https' in err.message.lower()):
                 flash('Something went wrong! Please try again.')
 
             # Otherwise, it means the user is trying to reset an invalid email
@@ -252,8 +256,9 @@ def forgot_change():
     this page can all be controlled via Flask-Stormpath settings.
     """
     try:
-        account = current_app.stormpath_manager.application.verify_password_reset_token(
-            request.args.get('sptoken'))
+        account = (
+            current_app.stormpath_manager.application.
+            verify_password_reset_token(request.args.get('sptoken')))
     except StormpathError as err:
         abort(400)
 
@@ -271,9 +276,11 @@ def forgot_change():
             account = User.from_login(account.email, form.password.data)
             login_user(account, remember=True)
 
-            return render_template(current_app.config['STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE'])
+            return render_template(current_app.config[
+                'STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE'])
         except StormpathError as err:
-            if isinstance(err.message, string_types) and 'https' in err.message.lower():
+            if (isinstance(err.message, string_types) and
+                    'https' in err.message.lower()):
                 flash('Something went wrong! Please try again.')
             else:
                 flash(err.message.get('message'))
@@ -302,8 +309,8 @@ def facebook_login():
 
         - Read the user's session using the Facebook SDK, extracting the user's
           Facebook access token.
-        - Once we have the user's access token, we send it to Stormpath, so that
-          we can either create (or update) the user on Stormpath's side.
+        - Once we have the user's access token, we send it to Stormpath, so
+          that we can either create (or update) the user on Stormpath's side.
         - Then we retrieve the Stormpath account object for the user, and log
           them in using our normal session support (powered by Flask-Login).
 
@@ -334,9 +341,11 @@ def facebook_login():
     except StormpathError as err:
         social_directory_exists = False
 
-        # If we failed here, it usually means that this application doesn't have
-        # a Facebook directory -- so we'll create one!
-        for asm in current_app.stormpath_manager.application.account_store_mappings:
+        # If we failed here, it usually means that this application doesn't
+        # have a Facebook directory -- so we'll create one!
+        for asm in (
+                current_app.stormpath_manager.application.
+                account_store_mappings):
 
             # If there is a Facebook directory, we know this isn't the problem.
             if (
@@ -354,23 +363,28 @@ def facebook_login():
         # Otherwise, we'll try to create a Facebook directory on the user's
         # behalf (magic!).
         dir = current_app.stormpath_manager.client.directories.create({
-            'name': current_app.stormpath_manager.application.name + '-facebook',
+            'name': (
+                current_app.stormpath_manager.application.name + '-facebook'),
             'provider': {
-                'client_id': current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
-                'client_secret': current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
+                'client_id': current_app.config['STORMPATH_SOCIAL'][
+                    'FACEBOOK']['app_id'],
+                'client_secret': current_app.config['STORMPATH_SOCIAL'][
+                    'FACEBOOK']['app_secret'],
                 'provider_id': Provider.FACEBOOK,
             },
         })
 
-        # Now that we have a Facebook directory, we'll map it to our application
-        # so it is active.
-        asm = current_app.stormpath_manager.application.account_store_mappings.create({
-            'application': current_app.stormpath_manager.application,
-            'account_store': dir,
-            'list_index': 99,
-            'is_default_account_store': False,
-            'is_default_group_store': False,
-        })
+        # Now that we have a Facebook directory, we'll map it to our
+        # application so it is active.
+        asm = (
+            current_app.stormpath_manager.application.account_store_mappings.
+            create({
+                'application': current_app.stormpath_manager.application,
+                'account_store': dir,
+                'list_index': 99,
+                'is_default_account_store': False,
+                'is_default_group_store': False,
+            }))
 
         # Lastly, let's retry the Facebook login one more time.
         account = User.from_facebook(facebook_user['access_token'])
@@ -414,7 +428,9 @@ def google_login():
 
         # If we failed here, it usually means that this application doesn't
         # have a Google directory -- so we'll create one!
-        for asm in current_app.stormpath_manager.application.account_store_mappings:
+        for asm in (
+                current_app.stormpath_manager.application.
+                account_store_mappings):
 
             # If there is a Google directory, we know this isn't the problem.
             if (
@@ -434,22 +450,27 @@ def google_login():
         dir = current_app.stormpath_manager.client.directories.create({
             'name': current_app.stormpath_manager.application.name + '-google',
             'provider': {
-                'client_id': current_app.config['STORMPATH_SOCIAL']['GOOGLE']['client_id'],
-                'client_secret': current_app.config['STORMPATH_SOCIAL']['GOOGLE']['client_secret'],
-                'redirect_uri': request.url_root[:-1] + current_app.config['STORMPATH_GOOGLE_LOGIN_URL'],
+                'client_id': current_app.config['STORMPATH_SOCIAL']['GOOGLE'][
+                    'client_id'],
+                'client_secret': current_app.config['STORMPATH_SOCIAL'][
+                    'GOOGLE']['client_secret'],
+                'redirect_uri': request.url_root[:-1] + current_app.config[
+                    'STORMPATH_GOOGLE_LOGIN_URL'],
                 'provider_id': Provider.GOOGLE,
             },
         })
 
         # Now that we have a Google directory, we'll map it to our application
         # so it is active.
-        asm = current_app.stormpath_manager.application.account_store_mappings.create({
-            'application': current_app.stormpath_manager.application,
-            'account_store': dir,
-            'list_index': 99,
-            'is_default_account_store': False,
-            'is_default_group_store': False,
-        })
+        asm = (
+            current_app.stormpath_manager.application.account_store_mappings.
+            create({
+                'application': current_app.stormpath_manager.application,
+                'account_store': dir,
+                'list_index': 99,
+                'is_default_account_store': False,
+                'is_default_group_store': False,
+            }))
 
         # Lastly, let's retry the Facebook login one more time.
         account = User.from_google(code)
@@ -477,7 +498,8 @@ def logout():
 @login_required
 def me():
     expansion = Expansion()
-    for attr, flag in current_app.config['stormpath']['web']['me']['expand'].items():
+    for attr, flag in current_app.config['stormpath']['web']['me'][
+            'expand'].items():
         if flag:
             expansion.add_property(attr)
     if expansion.items:

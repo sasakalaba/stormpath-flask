@@ -16,8 +16,8 @@ class AppWrapper(object):
         self.app = app
 
     def __call__(self, environ, start_response):
-        environ['HTTP_ACCEPT'] = ('text/html,application/xhtml+xml,' +
-            'application/xml;')
+        environ['HTTP_ACCEPT'] = (
+            'text/html,application/xhtml+xml,' + 'application/xml;')
         return self.app(environ, start_response)
 
 
@@ -27,8 +27,8 @@ class TestRegister(StormpathTestCase):
     def setUp(self):
         super(TestRegister, self).setUp()
         self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
-        self.form_fields = (self.app.config['stormpath']['web']['register']
-            ['form']['fields'])
+        self.form_fields = self.app.config['stormpath']['web']['register'][
+            'form']['fields']
 
     def test_get(self):
         # Ensure that a get request will only render the template and skip
@@ -278,17 +278,17 @@ class TestLogin(StormpathTestCase):
     def setUp(self):
         super(TestLogin, self).setUp()
         self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
-        self.form_fields = (self.app.config['stormpath']['web']['login']
-            ['form']['fields'])
+        self.form_fields = self.app.config['stormpath']['web']['login'][
+            'form']['fields']
 
     def test_email_login(self):
         # Create a user.
         with self.app.app_context():
             User.create(
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         # Attempt a login using email and password.
@@ -303,11 +303,11 @@ class TestLogin(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             User.create(
-                username = 'rdegges',
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                username='rdegges',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         # Attempt a login using username and password.
@@ -322,11 +322,11 @@ class TestLogin(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             User.create(
-                username = 'rdegges',
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                username='rdegges',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         # Ensure that an error is raised if an invalid username or password is
@@ -346,11 +346,11 @@ class TestLogin(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             User.create(
-                username = 'rdegges',
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                username='rdegges',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         # Setting redirect URL to something that is easy to check
@@ -387,10 +387,10 @@ class TestLogout(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             User.create(
-                given_name = 'Randall',
-                surname = 'Degges',
-                email = 'r@rdegges.com',
-                password = 'woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
 
         with self.app.test_client() as c:
