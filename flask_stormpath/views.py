@@ -82,7 +82,7 @@ def register():
             # We'll just set the field values to 'Anonymous' if the user
             # has explicitly said they don't want to collect those fields.
             for field in ['given_name', 'surname']:
-                if field not in data or not data[field]:
+                if not data.get(field):
                     data[field] = 'Anonymous'
 
             # Remove the confirmation password so it won't cause an error
