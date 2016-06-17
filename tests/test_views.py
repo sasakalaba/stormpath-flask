@@ -4,7 +4,6 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
-from unittest import skip
 from flask import session
 
 
@@ -26,9 +25,11 @@ class TestRegister(StormpathTestCase):
 
     def setUp(self):
         super(TestRegister, self).setUp()
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
         self.form_fields = self.app.config['stormpath']['web']['register'][
             'form']['fields']
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_get(self):
         # Ensure that a get request will only render the template and skip
@@ -277,9 +278,11 @@ class TestLogin(StormpathTestCase):
 
     def setUp(self):
         super(TestLogin, self).setUp()
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
         self.form_fields = self.app.config['stormpath']['web']['login'][
             'form']['fields']
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_email_login(self):
         # Create a user.
@@ -374,9 +377,14 @@ class TestLogin(StormpathTestCase):
             self.assertFalse(stormpath_register_redirect_url in location)
 
 
-@skip('StormpathForm.data (returns empty {}) ::AttributeError::')
 class TestLogout(StormpathTestCase):
     """Test our logout view."""
+
+    def setUp(self):
+        super(TestLogout, self).setUp()
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_logout_works_with_anonymous_users(self):
         with self.app.test_client() as c:

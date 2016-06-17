@@ -489,7 +489,7 @@ def logout():
 
     This view will log a user out of their account (destroying their session),
     then redirect the user to the home page of the site.
-   """
+    """
     logout_user()
     return redirect(
         current_app.config['stormpath']['web']['logout']['nextUri'])
