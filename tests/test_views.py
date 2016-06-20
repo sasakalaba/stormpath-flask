@@ -4,6 +4,7 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
+from flask_stormpath.views import make_stormpath_response, request_wants_json
 from flask import session
 
 
@@ -36,6 +37,21 @@ class StormpathViewTestCase(StormpathTestCase):
                 surname='Degges',
                 email='r@rdegges.com',
                 password='woot1LoveCookies!')
+
+
+class TestHelperFunctions(StormpathTestCase):
+    """Test our helper functions."""
+    def test_request_wants_json(self):
+        with self.app.test_client() as c:
+            # Ensure that request_wants_json returns True if 'text/html'
+            # accept header is missing.
+            c.get('/')
+            self.assertTrue(request_wants_json())
+
+            # Add an 'text/html' accept header
+            self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+            c.get('/')
+            self.assertFalse(request_wants_json())
 
 
 class TestRegister(StormpathViewTestCase):
