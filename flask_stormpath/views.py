@@ -37,9 +37,7 @@ def make_stormpath_response(data, template=None, return_json=True):
         stormpath_response = make_response(data, 200)
         stormpath_response.mimetype = 'application/json'
     else:
-        stormpath_response = render_template(
-            current_app.config['stormpath']['web']['login']['template'],
-            **data)
+        stormpath_response = render_template(template, **data)
     return stormpath_response
 
 
@@ -102,11 +100,13 @@ def register():
                 if (register_config['autoLogin'] and not current_app.config[
                         'stormpath']['web']['verifyEmail']['enabled']):
                     login_user(account, remember=True)
+
                 if request_wants_json():
                     account_data = {
                         'account': json.loads(account.to_json())}
                     return make_stormpath_response(
                         data=json.dumps(account_data))
+
                 # Set redirect priority
                 redirect_url = register_config['nextUri']
                 if not redirect_url:
@@ -121,8 +121,7 @@ def register():
                     return make_stormpath_response(
                         json.dumps({
                             'status': err.status if err.status else 400,
-                            'message': err.user_message
-                        }))
+                            'message': err.user_message}))
                 flash(err.message.get('message'))
 
     if request_wants_json():
@@ -171,8 +170,7 @@ def login():
 
             if request_wants_json():
                 account_data = {'account': json.loads(current_user.to_json())}
-                return make_stormpath_response(
-                    data={'account': account_data})
+                return make_stormpath_response(data={'account': account_data})
 
             return redirect(request.args.get('next') or login_config[
                 'nextUri'])
@@ -182,8 +180,7 @@ def login():
                 return make_stormpath_response(
                     json.dumps({
                         'error': err.status if err.status else 400,
-                        'message': err.user_message
-                    }))
+                        'message': err.user_message}))
             flash(err.message.get('message'))
 
     if request_wants_json():
@@ -205,6 +202,7 @@ def forgot():
     The URL this view is bound to, and the template that is used to render
     this page can all be controlled via Flask-Stormpath settings.
     """
+    forgot_config = current_app.config['stormpath']['web']['forgotPassword']
     form = ForgotPasswordForm()
 
     # If we received a POST request with valid information, we'll continue
@@ -221,12 +219,22 @@ def forgot():
             # If we're able to successfully send a password reset email to this
             # user, we'll display a success page prompting the user to check
             # their inbox to complete the password reset process.
-            return render_template(
-                current_app.config[
-                    'STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE'],
-                user=account,
-            )
+
+            if request_wants_json():
+                account_data = {'account': json.loads(current_user.to_json())}
+                return make_stormpath_response(data={'account': account_data})
+
+            return make_stormpath_response(
+                template='flask_stormpath/forgot_email_sent.html',
+                data={'user': account}, return_json=False)
+
         except StormpathError as err:
+            if request_wants_json():
+                return make_stormpath_response(
+                    json.dumps({
+                            'status': err.status if err.status else 400,
+                            'message': err.user_message}))
+
             # If the error message contains 'https', it means something failed
             # on the network (network connectivity, most likely).
             if (isinstance(err.message, string_types) and
@@ -238,10 +246,12 @@ def forgot():
             else:
                 flash('Invalid email address.')
 
-    return render_template(
-        current_app.config['stormpath']['web']['forgotPassword']['template'],
-        form=form,
-    )
+    if request_wants_json():
+        return make_stormpath_response(data=form.json)
+
+    return make_stormpath_response(
+         template=forgot_config['template'], data={'form': form},
+         return_json=False)
 
 
 def forgot_change():

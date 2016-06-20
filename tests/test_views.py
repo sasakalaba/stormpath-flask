@@ -412,3 +412,70 @@ class TestLogout(StormpathTestCase):
             # Log this user out.
             resp = c.get('/logout')
             self.assertEqual(resp.status_code, 302)
+
+
+class TestForgot(StormpathTestCase):
+    """Test our forgot view."""
+
+    def setUp(self):
+        super(TestForgot, self).setUp()
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+
+    def test_proper_template_rendering(self):
+        # Ensure that proper templates are rendered based on the request
+        # method.
+        with self.app.test_client() as c:
+            # Ensure request.GET will render the forgot.html template.
+            resp = c.get('/forgot')
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Enter your email address below to reset your password.' in
+                resp.data.decode('utf-8'))
+
+            # Create a user.
+            with self.app.app_context():
+                User.create(
+                    given_name='Randall',
+                    surname='Degges',
+                    email='r@rdegges.com',
+                    password='woot1LoveCookies!')
+
+            # Ensure that request.POST will render the forgot_email_sent.html
+            resp = c.post('/forgot', data={'email': 'r@rdegges.com'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Your password reset email has been sent!' in
+                resp.data.decode('utf-8'))
+
+    def test_error_messages(self):
+        # Create a user.
+        with self.app.app_context():
+            User.create(
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!')
+
+        with self.app.test_client() as c:
+            # Ensure than en email wasn't sent if an invalid email format was
+            # entered.
+            resp = c.post('/forgot', data={'email': 'rdegges'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Invalid email address.' in resp.data.decode('utf-8'))
+
+            # Ensure than en email wasn't sent if an email that doesn't exist
+            # in our database was entered.
+            resp = c.post('/forgot', data={'email': 'idonot@exist.com'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Invalid email address.' in resp.data.decode('utf-8'))
+
+            # Ensure that an email was sent if a valid email was entered.
+            resp = c.post('/forgot', data={'email': 'r@rdegges.com'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Your password reset email has been sent!' in
+                resp.data.decode('utf-8'))

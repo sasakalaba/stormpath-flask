@@ -173,7 +173,7 @@ web:
   forgotPassword:
     enabled: null
     uri: "/forgot"
-    template: "flask_stormpath/forgot_change.html"
+    template: "flask_stormpath/forgot.html"
     nextUri: "/login?status=forgot"
 
   # Unless changePassword.enabled is explicitly set to false, this feature
