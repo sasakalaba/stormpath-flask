@@ -20,16 +20,31 @@ class AppWrapper(object):
         return self.app(environ, start_response)
 
 
-class TestRegister(StormpathTestCase):
+class StormpathViewTestCase(StormpathTestCase):
+    """Base test class for Stormpath views."""
+    def setUp(self):
+        super(StormpathViewTestCase, self).setUp()
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
+
+        # Create a user.
+        with self.app.app_context():
+            User.create(
+                username='randalldeg',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!')
+
+
+class TestRegister(StormpathViewTestCase):
     """Test our registration view."""
 
     def setUp(self):
         super(TestRegister, self).setUp()
         self.form_fields = self.app.config['stormpath']['web']['register'][
             'form']['fields']
-
-        # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_get(self):
         # Ensure that a get request will only render the template and skip
@@ -44,18 +59,18 @@ class TestRegister(StormpathTestCase):
         with self.app.test_client() as c:
             # Ensure that missing fields will cause a failure.
             resp = c.post('/register', data={
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'email': 'r@rdegges2.com',
+                'password': 'thisisMy0therpassword...',
             })
             self.assertEqual(resp.status_code, 200)
 
             # Ensure that valid fields will result in a success.
             resp = c.post('/register', data={
-                'username': 'randalldeg',
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'username': 'randalldeg_registration',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...',
             })
             self.assertEqual(resp.status_code, 302)
 
@@ -67,12 +82,12 @@ class TestRegister(StormpathTestCase):
             # Ensure that confirmPassword will be popped from data before
             # creating the new User instance.
             resp = c.post('/register', data={
-                'username': 'randalldeg',
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
-                'confirm_password': 'woot1LoveCookies!'
+                'username': 'randalldeg_registration',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...',
+                'confirm_password': 'thisisMy0therpassword...'
             })
             self.assertEqual(resp.status_code, 302)
 
@@ -85,14 +100,14 @@ class TestRegister(StormpathTestCase):
         with self.app.test_client() as c:
             # Ensure that missing fields will cause a failure.
             resp = c.post('/register', data={
-                'email': 'r@rdegges.com',
+                'email': 'r_registration@rdegges.com',
             })
             self.assertEqual(resp.status_code, 200)
 
             # Ensure that valid fields will result in a success.
             resp = c.post('/register', data={
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...',
             })
             self.assertEqual(resp.status_code, 302)
 
@@ -106,14 +121,15 @@ class TestRegister(StormpathTestCase):
             # Ensure that registration works *without* given name and surname
             # since they aren't required.
             resp = c.post('/register', data={
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!'
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...'
             })
             self.assertEqual(resp.status_code, 302)
 
             # Find our user account that was just created, and ensure the given
             # name and surname fields were set to our default string.
-            user = User.from_login('r@rdegges.com', 'woot1LoveCookies!')
+            user = User.from_login(
+                'r_registration@rdegges.com', 'thisisMy0therpassword...')
             self.assertEqual(user.given_name, 'Anonymous')
             self.assertEqual(user.surname, 'Anonymous')
             self.assertEqual(user.username, user.email)
@@ -126,8 +142,8 @@ class TestRegister(StormpathTestCase):
         with self.app.test_client() as c:
             # Ensure that the form error is raised if the form is invalid.
             resp = c.post('/register', data={
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
@@ -138,9 +154,9 @@ class TestRegister(StormpathTestCase):
             # Ensure that an error is raised if an invalid password is
             # specified.
             resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
@@ -150,9 +166,9 @@ class TestRegister(StormpathTestCase):
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
             resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
                 'password': 'hilolwoot1',
             })
             self.assertEqual(resp.status_code, 200)
@@ -162,9 +178,9 @@ class TestRegister(StormpathTestCase):
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
             resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
                 'password': 'hilolwoothi',
             })
             self.assertEqual(resp.status_code, 200)
@@ -189,15 +205,16 @@ class TestRegister(StormpathTestCase):
             # Check that the user was redirected to the proper url and is
             # logged in after successful registration
             resp = c.post('/register', data={
-                'username': 'randalldeg',
-                'given_name': 'Randall',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'username': 'randalldeg_registration',
+                'given_name': 'Randall registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...',
             })
 
             # Get our user that was just created
-            user = User.from_login('r@rdegges.com', 'woot1LoveCookies!')
+            user = User.from_login(
+                'r_registration@rdegges.com', 'thisisMy0therpassword...')
             self.assertEqual(resp.status_code, 302)
             self.assertTrue(stormpath_register_redirect_url in resp.location)
             self.assertEqual(session['user_id'], user.href)
@@ -222,11 +239,11 @@ class TestRegister(StormpathTestCase):
             # Ensure that valid registration will redirect to
             # register redirect url
             resp = c.post('/register', data={
-                'given_name': 'Randall',
-                'middle_name': 'Clark',
-                'surname': 'Degges',
-                'email': 'r@rdegges.com',
-                'password': 'woot1LoveCookies!',
+                'given_name': 'Randall registration',
+                'middle_name': 'Clark registration',
+                'surname': 'Degges registration',
+                'email': 'r_registration@rdegges.com',
+                'password': 'thisisMy0therpassword...',
             })
 
             self.assertEqual(resp.status_code, 302)
@@ -241,11 +258,11 @@ class TestRegister(StormpathTestCase):
             # Ensure that valid registration will redirect to
             # login redirect url
             resp = c.post('/register', data={
-                'given_name': 'Randall2',
-                'middle_name': 'Clark2',
-                'surname': 'Degges2',
-                'email': 'r@rdegges2.com',
-                'password': 'woot1LoveCookies2!',
+                'given_name': 'Randall_registration2',
+                'middle_name': 'Clark_registration2',
+                'surname': 'Degges_registration2',
+                'email': 'r_registration2@rdegges.com',
+                'password': 'thisisMy0therpassword2...',
             })
 
             self.assertEqual(resp.status_code, 302)
@@ -260,11 +277,11 @@ class TestRegister(StormpathTestCase):
             # Ensure that valid registration will redirect to
             # default redirect url
             resp = c.post('/register', data={
-                'given_name': 'Randall3',
-                'middle_name': 'Clark3',
-                'surname': 'Degges3',
-                'email': 'r@rdegges3.com',
-                'password': 'woot1LoveCookies3!',
+                'given_name': 'Randall_registration3',
+                'middle_name': 'Clark_registration3',
+                'surname': 'Degges_registration3',
+                'email': 'r_registration3@rdegges.com',
+                'password': 'thisisMy0therpassword3...',
             })
 
             self.assertEqual(resp.status_code, 302)
@@ -273,7 +290,7 @@ class TestRegister(StormpathTestCase):
             self.assertFalse(stormpath_register_redirect_url in location)
 
 
-class TestLogin(StormpathTestCase):
+class TestLogin(StormpathViewTestCase):
     """Test our login view."""
 
     def setUp(self):
@@ -281,19 +298,7 @@ class TestLogin(StormpathTestCase):
         self.form_fields = self.app.config['stormpath']['web']['login'][
             'form']['fields']
 
-        # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
-
     def test_email_login(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         # Attempt a login using email and password.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
@@ -303,40 +308,20 @@ class TestLogin(StormpathTestCase):
             self.assertEqual(resp.status_code, 302)
 
     def test_username_login(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                username='rdegges',
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         # Attempt a login using username and password.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
-                'login': 'rdegges',
+                'login': 'randalldeg',
                 'password': 'woot1LoveCookies!',
             })
             self.assertEqual(resp.status_code, 302)
 
     def test_error_messages(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                username='rdegges',
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         # Ensure that an error is raised if an invalid username or password is
         # specified.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
-                'login': 'rdegges',
+                'login': 'randalldeg',
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
@@ -346,16 +331,6 @@ class TestLogin(StormpathTestCase):
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
     def test_redirect_to_login_or_register_url(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                username='rdegges',
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
         stormpath_register_redirect_url = '/redirect_for_registration'
@@ -367,7 +342,7 @@ class TestLogin(StormpathTestCase):
         with self.app.test_client() as c:
             # Attempt a login using username and password.
             resp = c.post('/login', data={
-                'login': 'rdegges',
+                'login': 'randalldeg',
                 'password': 'woot1LoveCookies!'
             })
 
@@ -377,14 +352,8 @@ class TestLogin(StormpathTestCase):
             self.assertFalse(stormpath_register_redirect_url in location)
 
 
-class TestLogout(StormpathTestCase):
+class TestLogout(StormpathViewTestCase):
     """Test our logout view."""
-
-    def setUp(self):
-        super(TestLogout, self).setUp()
-
-        # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_logout_works_with_anonymous_users(self):
         with self.app.test_client() as c:
@@ -392,15 +361,6 @@ class TestLogout(StormpathTestCase):
             self.assertEqual(resp.status_code, 302)
 
     def test_logout_works(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         with self.app.test_client() as c:
             # Log this user in.
             resp = c.post('/login', data={
@@ -414,14 +374,8 @@ class TestLogout(StormpathTestCase):
             self.assertEqual(resp.status_code, 302)
 
 
-class TestForgot(StormpathTestCase):
+class TestForgot(StormpathViewTestCase):
     """Test our forgot view."""
-
-    def setUp(self):
-        super(TestForgot, self).setUp()
-
-        # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
 
     def test_proper_template_rendering(self):
         # Ensure that proper templates are rendered based on the request
@@ -434,14 +388,6 @@ class TestForgot(StormpathTestCase):
                 'Enter your email address below to reset your password.' in
                 resp.data.decode('utf-8'))
 
-            # Create a user.
-            with self.app.app_context():
-                User.create(
-                    given_name='Randall',
-                    surname='Degges',
-                    email='r@rdegges.com',
-                    password='woot1LoveCookies!')
-
             # Ensure that request.POST will render the forgot_email_sent.html
             resp = c.post('/forgot', data={'email': 'r@rdegges.com'})
             self.assertEqual(resp.status_code, 200)
@@ -450,14 +396,6 @@ class TestForgot(StormpathTestCase):
                 resp.data.decode('utf-8'))
 
     def test_error_messages(self):
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!')
-
         with self.app.test_client() as c:
             # Ensure than en email wasn't sent if an invalid email format was
             # entered.
