@@ -6,6 +6,8 @@ from flask_stormpath.forms import StormpathForm
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, Email, EqualTo
 from stormpath.resources import Resource
+from collections import OrderedDict
+import json
 
 
 class TestStormpathForm(StormpathTestCase):
@@ -96,8 +98,8 @@ class TestStormpathForm(StormpathTestCase):
             self.assertEqual(set(field_diff), set(form_config['fieldOrder']))
 
     def test_error_messages(self):
-        # FIX ME: mozda ne samo koristiti register formu, mozda se rijesi
-        # ako kostistis samo StormpathFormu
+        # We'll use register form fields for this test, since they cover
+        # every error message case.
         form_config = self.app.config['stormpath']['web']['register']['form']
 
         # We are creating requests, since wtforms pass request.form to form
@@ -170,3 +172,42 @@ class TestStormpathForm(StormpathTestCase):
             })
             form = StormpathForm.specialize_form(form_config)()
             self.assertTrue(form.validate_on_submit())
+
+    def test_json_fields(self):
+        # Ensure that json fields have the same properties as specified in the
+        # config.
+        with self.app.app_context():
+            form_config = self.app.config['stormpath']['web']['login']['form']
+            form = StormpathForm.specialize_form(form_config)()
+
+            field_specs = []
+            for key in form_config['fields'].keys():
+                field = form_config['fields'][key].copy()
+                field.pop('enabled')
+                field['name'] = key
+                field_specs.append(field)
+            self.assertEqual(form._json, field_specs)
+
+    def test_json_property(self):
+        # Ensure that json property returns a proper json value.
+        with self.app.app_context():
+            form_config = self.app.config['stormpath']['web']['login']['form']
+            form = StormpathForm.specialize_form(form_config)()
+
+            field_specs = []
+            for key in form_config['fields'].keys():
+                field = form_config['fields'][key].copy()
+                field.pop('enabled')
+                field['name'] = key
+                field_specs.append(field)
+
+            # We cannot compare two json values directly, so first compare
+            # that they're both strings
+            self.assertEqual(type(form.json), type(json.dumps(field_specs)))
+
+            # Then compare that they both contain the same values.
+            form_json = json.loads(form.json)
+            for field1, field2 in zip(form_json, field_specs):
+                field1 = OrderedDict(sorted(field1.items()))
+                field2 = OrderedDict(sorted(field2.items()))
+                self.assertEqual(field1, field2)

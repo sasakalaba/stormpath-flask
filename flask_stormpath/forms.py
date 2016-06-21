@@ -5,6 +5,7 @@ from flask.ext.wtf import Form
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, ValidationError, EqualTo, Email
 from stormpath.resources import Resource
+import json
 
 
 class StormpathForm(Form):
@@ -30,10 +31,16 @@ class StormpathForm(Form):
         field_list = config['fields']
         field_order = config['fieldOrder']
 
+        setattr(cls, '_json', [])
+
         for field in field_order:
             if field_list[field]['enabled']:
                 validators = []
                 placeholder = field_list[field]['placeholder']
+
+                # Construct json fields
+                json_field = {'name': Resource.from_camel_case(field)}
+                json_field['placeholder'] = placeholder
 
                 # Apply validators.
                 if field_list[field]['required']:
@@ -47,12 +54,14 @@ class StormpathForm(Form):
                 if field == 'confirmPassword':
                     validators.append(EqualTo(
                         'password', message='Passwords do not match.'))
+                json_field['required'] = field_list[field]['required']
 
                 # Apply field classes.
                 if field_list[field]['type'] == 'password':
                     field_class = PasswordField
                 else:
                     field_class = StringField
+                json_field['type'] = field_list[field]['type']
 
                 # Apply labels.
                 if 'label' in field_list[field] and isinstance(
@@ -60,6 +69,10 @@ class StormpathForm(Form):
                     label = field_list[field]['label']
                 else:
                     label = ''
+                json_field['label'] = field_list[field]['label']
+
+                # Set json fields.
+                cls._json.append(json_field)
 
                 # Finally, create our fields dynamically.
                 setattr(
@@ -69,6 +82,10 @@ class StormpathForm(Form):
                         render_kw={"placeholder": placeholder}))
 
         return cls
+
+    @property
+    def json(self):
+        return json.dumps(self._json)
 
 
 class ForgotPasswordForm(Form):

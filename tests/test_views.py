@@ -4,7 +4,7 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
-from flask_stormpath.views import make_stormpath_response, request_wants_json
+from flask_stormpath.views import request_wants_json
 from flask import session
 
 
