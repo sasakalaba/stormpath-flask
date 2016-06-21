@@ -4,8 +4,9 @@
 from flask.ext.stormpath.models import User
 
 from .helpers import StormpathTestCase
-from flask_stormpath.views import request_wants_json
+from flask_stormpath.views import make_stormpath_response, request_wants_json
 from flask import session
+import json
 
 
 class AppWrapper(object):
@@ -52,6 +53,25 @@ class TestHelperFunctions(StormpathTestCase):
             self.app.wsgi_app = AppWrapper(self.app.wsgi_app)
             c.get('/')
             self.assertFalse(request_wants_json())
+
+    def test_make_stormpath_response(self):
+        def check_header(st, headers):
+            return any(st in header for header in headers)
+
+        data = {'foo': 'bar'}
+        with self.app.test_client() as c:
+            # Ensure that stormpath_response is json if request wants json.
+            c.get('/')
+            resp = make_stormpath_response(json.dumps(data))
+            self.assertFalse(check_header('text/html', resp.headers[0]))
+            self.assertTrue(check_header('application/json', resp.headers[0]))
+            self.assertEqual(resp.data, json.dumps(data))
+
+            # Ensure that stormpath_response is html if request wants html.
+            c.get('/')
+            resp = make_stormpath_response(
+                data, template='flask_stormpath/base.html', return_json=False)
+            self.assertTrue(isinstance(resp, unicode))
 
 
 class TestRegister(StormpathViewTestCase):
