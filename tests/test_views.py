@@ -325,6 +325,9 @@ class TestRegister(StormpathViewTestCase):
             self.assertFalse(stormpath_login_redirect_url in location)
             self.assertFalse(stormpath_register_redirect_url in location)
 
+    def test_json_response(self):
+        self.fail('youre missing a test')
+
 
 class TestLogin(StormpathViewTestCase):
     """Test our login view."""
@@ -386,6 +389,9 @@ class TestLogin(StormpathViewTestCase):
             location = resp.headers.get('location')
             self.assertTrue(stormpath_login_redirect_url in location)
             self.assertFalse(stormpath_register_redirect_url in location)
+
+    def test_json_response(self):
+        self.fail('youre missing a test')
 
 
 class TestLogout(StormpathViewTestCase):
@@ -453,3 +459,6 @@ class TestForgot(StormpathViewTestCase):
             self.assertTrue(
                 'Your password reset email has been sent!' in
                 resp.data.decode('utf-8'))
+
+    def test_json_response(self):
+        self.fail('youre missing a test')

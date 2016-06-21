@@ -4,6 +4,7 @@
 from flask_stormpath.models import User
 from stormpath.resources.account import Account
 from .helpers import StormpathTestCase
+import json
 
 
 class TestUser(StormpathTestCase):
@@ -158,3 +159,15 @@ class TestUser(StormpathTestCase):
                 'woot1LoveCookies2!',
             )
             self.assertEqual(user.href, original_href)
+
+    def test_to_json(self):
+        self.assertTrue(isinstance(self.user.to_json(), str))
+        json_data = json.loads(self.user.to_json())
+        expected_json_data = {
+            'username': self.user.username,
+            'email': self.user.email,
+            'given_name': self.user.given_name,
+            'middle_name': self.user.middle_name,
+            'surname': self.user.surname,
+            'status': self.user.status}
+        self.assertEqual(json_data, expected_json_data)

@@ -8,6 +8,7 @@ from blinker import Namespace
 
 from stormpath.resources.account import Account
 from stormpath.resources.provider import Provider
+import json
 
 
 stormpath_signals = Namespace()
@@ -69,6 +70,17 @@ class User(Account):
         return_value = super(User, self).delete()
         user_deleted.send(None, user=user_dict)
         return return_value
+
+    def to_json(self):
+        writable_attrs = (
+            'username',
+            'email',
+            'given_name',
+            'middle_name',
+            'surname',
+            'status')
+        return json.dumps(
+            {key: getattr(self, key, None) for key in writable_attrs})
 
     @classmethod
     def create(
