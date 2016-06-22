@@ -79,8 +79,8 @@ class User(Account):
             'middle_name',
             'surname',
             'status')
-        return json.dumps(
-            {key: getattr(self, key, None) for key in writable_attrs})
+        return json.dumps({'account': {
+            key: getattr(self, key, None) for key in writable_attrs}})
 
     @classmethod
     def create(

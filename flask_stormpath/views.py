@@ -102,10 +102,7 @@ def register():
                     login_user(account, remember=True)
 
                 if request_wants_json():
-                    account_data = {
-                        'account': json.loads(account.to_json())}
-                    return make_stormpath_response(
-                        data=json.dumps(account_data))
+                    return make_stormpath_response(data=account.to_json())
 
                 # Set redirect priority
                 redirect_url = register_config['nextUri']
@@ -169,8 +166,7 @@ def login():
             login_user(account, remember=True)
 
             if request_wants_json():
-                account_data = {'account': json.loads(current_user.to_json())}
-                return make_stormpath_response(data={'account': account_data})
+                return make_stormpath_response(data=current_user.to_json())
 
             return redirect(request.args.get('next') or login_config[
                 'nextUri'])
@@ -221,8 +217,7 @@ def forgot():
             # their inbox to complete the password reset process.
 
             if request_wants_json():
-                account_data = {'account': json.loads(current_user.to_json())}
-                return make_stormpath_response(data={'account': account_data})
+                return make_stormpath_response(data=current_user.to_json())
 
             return make_stormpath_response(
                 template='flask_stormpath/forgot_email_sent.html',
