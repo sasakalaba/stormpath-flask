@@ -163,11 +163,11 @@ class TestUser(StormpathTestCase):
     def test_to_json(self):
         self.assertTrue(isinstance(self.user.to_json(), str))
         json_data = json.loads(self.user.to_json())
-        expected_json_data = {
+        expected_json_data = {'account': {
             'username': self.user.username,
             'email': self.user.email,
             'given_name': self.user.given_name,
             'middle_name': self.user.middle_name,
             'surname': self.user.surname,
-            'status': self.user.status}
+            'status': self.user.status}}
         self.assertEqual(json_data, expected_json_data)

@@ -32,9 +32,10 @@ else:
     FACEBOOK = True
 
 
-def make_stormpath_response(data, template=None, return_json=True):
+def make_stormpath_response(
+        data, template=None, return_json=True, status_code=200):
     if return_json:
-        stormpath_response = make_response(data, 200)
+        stormpath_response = make_response(data, status_code)
         stormpath_response.mimetype = 'application/json'
     else:
         stormpath_response = render_template(template, **data)
@@ -117,8 +118,9 @@ def register():
                 if request_wants_json():
                     return make_stormpath_response(
                         json.dumps({
-                            'status': err.status if err.status else 400,
-                            'message': err.user_message}))
+                            'error': err.status if err.status else 400,
+                            'message': err.message.get('message')}),
+                        status_code=err.status)
                 flash(err.message.get('message'))
 
     if request_wants_json():
@@ -176,7 +178,8 @@ def login():
                 return make_stormpath_response(
                     json.dumps({
                         'error': err.status if err.status else 400,
-                        'message': err.user_message}))
+                        'message': err.message.get('message')}),
+                    status_code=400)
             flash(err.message.get('message'))
 
     if request_wants_json():
