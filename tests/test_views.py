@@ -597,3 +597,22 @@ class TestForgot(StormpathViewTestCase):
             self.assertTrue(
                 'Your password reset email has been sent!' in
                 resp.data.decode('utf-8'))
+
+
+class TestMe(StormpathViewTestCase):
+    """Test our me view."""
+    def test_json_response(self):
+        with self.app.test_client() as c:
+            email = 'r@rdegges.com'
+            password = 'woot1LoveCookies!'
+            # Authenticate our user.
+            resp = c.post('/login', data={
+                'login': email,
+                'password': password,
+            })
+            resp = c.get('/me')
+            account = User.from_login(email, password)
+            self.assertEqual(resp.data, account.to_json())
+
+    def test_added_expansion(self):
+        self.fail('This will be added when the json issue is addressed.')
