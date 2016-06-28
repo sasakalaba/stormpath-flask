@@ -179,18 +179,6 @@ class TestInitSettings(StormpathTestCase):
 class TestCheckSettings(StormpathTestCase):
     """Ensure our settings checker is working properly."""
 
-    def setUp(self):
-        """Create an apiKey.properties file for testing."""
-        super(TestCheckSettings, self).setUp()
-
-        # Generate our file locally.
-        self.fd, self.file = mkstemp()
-        api_key_id = 'apiKey.id = %s\n' % environ.get('STORMPATH_API_KEY_ID')
-        api_key_secret = 'apiKey.secret = %s\n' % environ.get(
-            'STORMPATH_API_KEY_SECRET')
-        write(self.fd, api_key_id.encode('utf-8') + b'\n')
-        write(self.fd, api_key_secret.encode('utf-8') + b'\n')
-
     def test_requires_api_credentials(self):
         # We'll remove our default API credentials, and ensure we get an
         # exception raised.
@@ -215,7 +203,8 @@ class TestCheckSettings(StormpathTestCase):
         # work.
         self.app.config['stormpath']['client']['apiKey']['id'] = None
         self.app.config['stormpath']['client']['apiKey']['secret'] = None
-        self.app.config['stormpath']['client']['apiKey']['file'] = self.file
+        self.app.config['stormpath']['client']['apiKey'][
+            'file'] = 'apiKey.properties'
         self.manager.check_settings(self.app.config)
 
     def test_requires_application(self):
@@ -229,7 +218,6 @@ class TestCheckSettings(StormpathTestCase):
             config_error.exception.message,
             'You must define your Stormpath application.')
 
-    @skip('STORMPATH_SOCIAL not in config ::KeyError::')
     def test_google_settings(self):
         # Ensure that if the user has Google login enabled, they've specified
         # the correct settings.
@@ -255,7 +243,6 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_SOCIAL']['GOOGLE']['client_secret'] = 'xxx'
         self.manager.check_settings(self.app.config)
 
-    @skip('STORMPATH_SOCIAL not in config ::KeyError::')
     def test_facebook_settings(self):
         # Ensure that if the user has Facebook login enabled, they've specified
         # the correct settings.
@@ -323,32 +310,15 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False
         self.manager.check_settings(self.app.config)
 
-    @skip('This test is seemingly the same as the test_verify_email_autologin')
     def test_register_default_account_store(self):
-        # stormpath.web.register.autoLogin is true, but the default account
-        # store of the specified application has the email verification
-        # workflow enabled. Auto login is only possible if email verification
-        # is disabled
-        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = True
-        self.app.config['stormpath']['web']['register']['autoLogin'] = True
-        with self.assertRaises(ConfigurationError) as config_error:
-            self.manager.check_settings(self.app.config)
-        self.assertEqual(config_error.exception.message, (
-            'Invalid configuration: stormpath.web.register.autoLogin is' +
-            ' true, but the default account store of the specified' +
-            ' application has the email verification workflow enabled.' +
-            ' Auto login is only possible if email verification is' +
-            ' disabled. Please disable this workflow on this' +
-            ' application\'s default account store.'))
-
-        # Now that we've configured things properly, it should work.
-        self.app.config['stormpath']['web']['verifyEmail']['enabled'] = False
+        # Ensure that proper configuration won't raise an error.
         self.manager.check_settings(self.app.config)
 
-    def tearDown(self):
-        """Remove our apiKey.properties file."""
-        super(TestCheckSettings, self).tearDown()
-
-        # Remove our file.
-        close(self.fd)
-        remove(self.file)
+        # Ensure that an application without an account store will raise an
+        #  error.
+        self.app.config['stormpath']['web']['register']['enabled'] = False
+        app = self.client.applications.get(
+            self.app.config['stormpath']['application']['href'])
+        app.default_account_store_mapping.delete()
+        self.assertRaises(
+            ConfigurationError, self.manager.check_settings, self.app.config)

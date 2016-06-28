@@ -264,23 +264,31 @@ class StormpathManager(object):
                 'You must define your Stormpath application.')
 
         if config['STORMPATH_ENABLE_GOOGLE']:
-            google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
+            if 'STORMPATH_SOCIAL' in config:
+                google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
+            else:
+                google_config = None
 
             if not google_config or not all([
                 google_config.get('client_id'),
                 google_config.get('client_secret'),
             ]):
-                raise ConfigurationError('You must define your Google app settings.')
+                raise ConfigurationError(
+                    'You must define your Google app settings.')
 
         if config['STORMPATH_ENABLE_FACEBOOK']:
-            facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
+            if 'STORMPATH_SOCIAL' in config:
+                facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
+            else:
+                facebook_config = None
 
             if not facebook_config or not all([
                 facebook_config,
                 facebook_config.get('app_id'),
                 facebook_config.get('app_secret'),
             ]):
-                raise ConfigurationError('You must define your Facebook app settings.')
+                raise ConfigurationError(
+                    'You must define your Facebook app settings.')
 
         if not all([
                 config['stormpath']['web']['register']['enabled'],
