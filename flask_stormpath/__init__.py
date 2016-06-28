@@ -42,9 +42,6 @@ from flask.ext.login import (
 
 from stormpath.client import Client
 from stormpath.error import Error as StormpathError
-# FIXME: cannot install stormpath_config via pip
-import sys
-sys.path.insert(0, '/home/sasa/Projects/stormpath/stormpath-python-config')
 from stormpath_config.loader import ConfigLoader
 from stormpath_config.strategies import (
     LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
