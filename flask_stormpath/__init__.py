@@ -195,8 +195,8 @@ class StormpathManager(object):
         config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
 
         for key, value in config.items():
-            if key.startswith(config['stormpath'].STORMPATH_PREFIX) and \
-                    key in config['stormpath']:
+            if (key.startswith(config['stormpath'].STORMPATH_PREFIX) and
+                    key in config['stormpath']):
                 config['stormpath'][key] = value
 
         # Create our custom user agent.  This allows us to see which

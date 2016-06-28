@@ -43,8 +43,8 @@ def make_stormpath_response(
 
 
 def request_wants_json():
-    best = request.accept_mimetypes \
-        .best_match(current_app.config['stormpath']['web']['produces'])
+    best = request.accept_mimetypes.best_match(current_app.config[
+        'stormpath']['web']['produces'])
     if best is None and current_app.config['stormpath']['web']['produces']:
         best = current_app.config['stormpath']['web']['produces'][0]
     return best == 'application/json'
