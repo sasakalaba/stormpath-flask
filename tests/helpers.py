@@ -6,7 +6,7 @@ operations.
 """
 
 
-from os import environ
+from os import environ, path
 from unittest import TestCase
 from uuid import uuid4
 
@@ -14,9 +14,21 @@ from flask import Flask
 from flask.ext.stormpath import StormpathManager
 from stormpath.client import Client
 
-# FIXME: setup a better way to load environment variables
-environ['STORMPATH_API_KEY_ID'] = '15O7VLV850461TYBRFP91KRR4'
-environ['STORMPATH_API_KEY_SECRET'] = '8Ao/UesWQVhVkE7LL7ZVApHWn/r0cygrrHaruh75ipk'
+
+# Make sure you've created a StormpathAccount, generated your apikey
+# properties file, and saved to tests directory
+if path.isfile('tests/apiKey.properties'):
+    with open('tests/apiKey.properties') as f:
+        lines = f.read().splitlines()
+        apikey_properties = {}
+        for line in lines:
+            (key, val) = line.split(' = ')
+            if 'id' in key:
+                environ['STORMPATH_API_KEY_ID'] = val
+            if 'secret' in key:
+                environ['STORMPATH_API_KEY_SECRET'] = val
+else:
+    raise ValueError('First create your api properties file before testing!')
 
 
 class StormpathTestCase(TestCase):
