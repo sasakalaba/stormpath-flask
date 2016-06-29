@@ -39,7 +39,7 @@ class StormpathViewTestCase(StormpathTestCase):
         return any(st in header for header in headers)
 
     def assertJsonResponse(
-            self, method, view, status_code, **kwargs):
+            self, method, view, status_code, expected_response, **kwargs):
         """Custom assert for testing json responses on flask_stormpath
            views."""
 
@@ -52,10 +52,6 @@ class StormpathViewTestCase(StormpathTestCase):
             allowed_methods = {
                 'get': c.get,
                 'post': c.post}
-
-            # If we expect an error message to pop up, remove it from kwargs
-            # to be tested later.
-            error_message = kwargs.pop('error_message', None)
 
             if method in allowed_methods:
                 resp = allowed_methods[method]('/%s' % view, **kwargs)
@@ -74,10 +70,10 @@ class StormpathViewTestCase(StormpathTestCase):
             if method == 'get':
                 # If method is get, ensure that response data is the json
                 # representation of form field settings.
-                resp_data = json.loads(resp.data)
 
                 # Build form fields from the response and compare them to form
                 # fields specified in the config file.
+                resp_data = json.loads(resp.data)
                 form_fields = {}
                 for field in resp_data:
                     field['enabled'] = True
@@ -88,20 +84,18 @@ class StormpathViewTestCase(StormpathTestCase):
                 for key in self.form_fields.keys():
                     if not self.form_fields[key]['enabled']:
                         self.form_fields.pop(key)
+
+                # Ensure that form field specifications from json response are
+                # the same as in the config file.
                 self.assertEqual(self.form_fields, form_fields)
 
             else:
                 # If method is post, ensure that either account info or
                 # stormpath error is returned.
                 self.assertTrue('data' in kwargs.keys())
-                data = json.loads(kwargs['data'])
-                if error_message:
-                    self.assertEqual(resp.data, json.dumps(error_message))
-                else:
-                    email = data.get('login', data.get('email'))
-                    password = data.get('password')
-                    account = User.from_login(email, password)
-                    self.assertEqual(resp.data, account.to_json())
+
+            # Ensure that response data is the same as the expected data.
+            self.assertEqual(resp.data, expected_response)
 
 
 class TestHelperFunctions(StormpathViewTestCase):
@@ -132,7 +126,7 @@ class TestHelperFunctions(StormpathViewTestCase):
                 'text/html', resp.headers[0]))
             self.assertTrue(self.check_header(
                 'application/json', resp.headers[0]))
-            self.assertEqual(resp.data, json.dumps(data))
+            self.assertEqual(resp.data, '{"foo": "bar"}')
 
             # Ensure that stormpath_response is html if request wants html.
             c.get('/')
@@ -393,24 +387,55 @@ class TestRegister(StormpathViewTestCase):
             self.assertFalse(stormpath_register_redirect_url in location)
 
     def test_json_response_get(self):
-        self.assertJsonResponse('get', 'register', 200)
+        # Here we'll disable all the fields except for the mandatory fields:
+        # email and password.
+        for field in ['givenName', 'middleName', 'surname', 'username']:
+            self.form_fields[field]['enabled'] = False
+
+        # Specify expected response.
+        expected_response = [
+            {'label': 'Email',
+             'name': 'email',
+             'placeholder': 'Email',
+             'required': True,
+             'type': 'email'},
+            {'label': 'Password',
+             'name': 'password',
+             'placeholder': 'Password',
+             'required': True,
+             'type': 'password'}]
+
+        self.assertJsonResponse(
+            'get', 'register', 200, json.dumps(expected_response))
 
     def test_json_response_valid_form(self):
-        json_data = json.dumps({
+        # Specify user data
+        user_data = {
             'username': 'rdegges2',
             'email': 'r@rdegges2.com',
             'given_name': 'Randall2',
-            'middle_name': 'Clark2',
+            'middle_name': None,
             'surname': 'Degges2',
-            'password': 'woot1LoveCookies!2'})
+            'password': 'woot1LoveCookies!2'
+        }
+
+        # Specify expected response.
+        expected_response = {'account': user_data.copy()}
+        expected_response['account']['status'] = 'ENABLED'
+        expected_response['account'].pop('password')
+
+        # Specify post data
+        json_data = json.dumps(user_data)
         request_kwargs = {
             'data': json_data,
             'content_type': 'application/json'}
 
         self.assertJsonResponse(
-            'post', 'register', 200, **request_kwargs)
+            'post', 'register', 200, json.dumps(expected_response),
+            **request_kwargs)
 
     def test_json_response_stormpath_error(self):
+        # Specify post data
         json_data = json.dumps({
             'username': 'rdegges',
             'email': 'r@rdegges.com',
@@ -418,18 +443,20 @@ class TestRegister(StormpathViewTestCase):
             'middle_name': 'Clark',
             'surname': 'Degges',
             'password': 'woot1LoveCookies!'})
-        error_message = {
+
+        # Specify expected response
+        expected_response = {
             'message': (
                 'Account with that email already exists.' +
                 '  Please choose another email.'),
             'error': 409}
         request_kwargs = {
             'data': json_data,
-            'content_type': 'application/json',
-            'error_message': error_message}
+            'content_type': 'application/json'}
 
         self.assertJsonResponse(
-            'post', 'register', 409, **request_kwargs)
+            'post', 'register', 409, json.dumps(expected_response),
+            **request_kwargs)
 
 
 class TestLogin(StormpathViewTestCase):
@@ -494,9 +521,34 @@ class TestLogin(StormpathViewTestCase):
             self.assertFalse(stormpath_register_redirect_url in location)
 
     def test_json_response_get(self):
-        self.assertJsonResponse('get', 'login', 200)
+        # Specify expected response.
+        expected_response = [
+            {'label': 'Username or Email',
+             'name': 'login',
+             'placeholder': 'Username or Email',
+             'required': True,
+             'type': 'text'},
+            {'label': 'Password',
+             'name': 'password',
+             'placeholder': 'Password',
+             'required': True,
+             'type': 'password'}]
+
+        self.assertJsonResponse(
+            'get', 'login', 200, json.dumps(expected_response))
 
     def test_json_response_valid_form(self):
+        # Specify expected response.
+        expected_response = {'account': {
+            'username': 'randalldeg',
+            'email': 'r@rdegges.com',
+            'given_name': 'Randall',
+            'middle_name': None,
+            'surname': 'Degges',
+            'status': 'ENABLED'}
+        }
+
+        # Specify post data
         json_data = json.dumps({
             'login': 'r@rdegges.com',
             'password': 'woot1LoveCookies!'})
@@ -504,21 +556,25 @@ class TestLogin(StormpathViewTestCase):
             'data': json_data,
             'content_type': 'application/json'}
         self.assertJsonResponse(
-            'post', 'login', 200, **request_kwargs)
+            'post', 'login', 200, json.dumps(expected_response),
+            **request_kwargs)
 
     def test_json_response_stormpath_error(self):
+        # Specify post data
         json_data = json.dumps({
             'login': 'wrong@email.com',
             'password': 'woot1LoveCookies!'})
-        error_message = {
+
+        # Specify expected response
+        expected_response = {
             'message': 'Invalid username or password.',
             'error': 400}
         request_kwargs = {
             'data': json_data,
-            'content_type': 'application/json',
-            'error_message': error_message}
+            'content_type': 'application/json'}
         self.assertJsonResponse(
-            'post', 'login', 400, **request_kwargs)
+            'post', 'login', 400, json.dumps(expected_response),
+            **request_kwargs)
 
 
 class TestLogout(StormpathViewTestCase):

@@ -174,26 +174,63 @@ class TestStormpathForm(StormpathTestCase):
             self.assertTrue(form.validate_on_submit())
 
     def test_json_fields(self):
-        # Ensure that json fields have the same properties as specified in the
-        # config.
+        # Specify expected fields
+        expected_fields = [
+            {
+                'name': 'login',
+                'type': 'text',
+                'required': True,
+                'label': 'Username or Email',
+                'placeholder': 'Username or Email'},
+            {
+                'name': 'password',
+                'type': 'password',
+                'required': True,
+                'label': 'Password',
+                'placeholder': 'Password'}
+        ]
+
         with self.app.app_context():
             form_config = self.app.config['stormpath']['web']['login']['form']
             form = StormpathForm.specialize_form(form_config)()
 
+            # Construct field settings from the config.
             field_specs = []
             for key in form_config['fields'].keys():
                 field = form_config['fields'][key].copy()
                 field.pop('enabled')
                 field['name'] = key
                 field_specs.append(field)
+
+            # Ensure that _json fields are the same as expected fields.
+            self.assertEqual(form._json, expected_fields)
+
+            # Ensure that _json fields are the same as config settings.
             self.assertEqual(form._json, field_specs)
 
     def test_json_property(self):
+        # Specify expected fields
+        expected_fields = [
+            {
+                'name': 'login',
+                'type': 'text',
+                'required': True,
+                'label': 'Username or Email',
+                'placeholder': 'Username or Email'},
+            {
+                'name': 'password',
+                'type': 'password',
+                'required': True,
+                'label': 'Password',
+                'placeholder': 'Password'}
+        ]
+
         # Ensure that json property returns a proper json value.
         with self.app.app_context():
             form_config = self.app.config['stormpath']['web']['login']['form']
             form = StormpathForm.specialize_form(form_config)()
 
+            # Construct field settings from the config.
             field_specs = []
             for key in form_config['fields'].keys():
                 field = form_config['fields'][key].copy()
@@ -201,13 +238,13 @@ class TestStormpathForm(StormpathTestCase):
                 field['name'] = key
                 field_specs.append(field)
 
-            # We cannot compare two json values directly, so first compare
-            # that they're both strings
-            self.assertEqual(type(form.json), type(json.dumps(field_specs)))
+            # Ensure that json return value is the same as config settings.
+            self.assertEqual(json.loads(form.json), field_specs)
+
+            # We cannot compare expected_fields directly, so we'll first
+            # compare that both values are strings.
+            self.assertEqual(
+                type(form.json), type(json.dumps(expected_fields)))
 
             # Then compare that they both contain the same values.
-            form_json = json.loads(form.json)
-            for field1, field2 in zip(form_json, field_specs):
-                field1 = OrderedDict(sorted(field1.items()))
-                field2 = OrderedDict(sorted(field2.items()))
-                self.assertEqual(field1, field2)
+            self.assertEqual(json.loads(form.json), expected_fields)
