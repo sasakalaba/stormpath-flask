@@ -2,24 +2,11 @@
 
 
 from flask.ext.stormpath.models import User
-from .helpers import StormpathTestCase
+from .helpers import StormpathTestCase, AppWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import make_stormpath_response, request_wants_json
 from flask import session
 import json
-
-
-class AppWrapper(object):
-    """
-    Helper class for injecting HTTP headers.
-    """
-    def __init__(self, app, accept_header):
-        self.app = app
-        self.accept_header = accept_header
-
-    def __call__(self, environ, start_response):
-        environ['HTTP_ACCEPT'] = (self.accept_header)
-        return self.app(environ, start_response)
 
 
 class StormpathViewTestCase(StormpathTestCase):

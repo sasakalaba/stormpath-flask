@@ -69,6 +69,19 @@ class SignalReceiver(object):
         self.received_signals.append((sender, user))
 
 
+class AppWrapper(object):
+    """
+    Helper class for injecting HTTP headers.
+    """
+    def __init__(self, app, accept_header):
+        self.app = app
+        self.accept_header = accept_header
+
+    def __call__(self, environ, start_response):
+        environ['HTTP_ACCEPT'] = (self.accept_header)
+        return self.app(environ, start_response)
+
+
 def bootstrap_client():
     """
     Create a new Stormpath Client from environment variables.

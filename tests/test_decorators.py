@@ -3,12 +3,9 @@
 
 from flask.ext.stormpath import User
 from flask.ext.stormpath.decorators import groups_required
-
 from .helpers import StormpathTestCase
-from unittest import skip
 
 
-@skip('StormpathForm.data (returns empty {}) ::AttributeError::')
 class TestGroupsRequired(StormpathTestCase):
 
     def setUp(self):

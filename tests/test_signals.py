@@ -7,16 +7,16 @@ from flask_stormpath.models import (
     user_deleted,
     user_updated
 )
-
-from .helpers import StormpathTestCase, SignalReceiver
-from unittest import skip
+from .helpers import StormpathTestCase, SignalReceiver, AppWrapper
 
 
 class TestSignals(StormpathTestCase):
     """Test signals."""
+    def setUp(self):
+        super(TestSignals, self).setUp()
+        self.html_header = 'text/html,application/xhtml+xml,application/xml;'
+        self.app.wsgi_app = AppWrapper(self.app.wsgi_app, self.html_header)
 
-    @skip('No redirect on success (200 != 302) ::AssertionError::')
-    #@skip('Signal receiver empty' ::TypeError::)
     def test_user_created_signal(self):
         # Subscribe to signals for user creation
         signal_receiver = SignalReceiver()
@@ -25,6 +25,7 @@ class TestSignals(StormpathTestCase):
         # Register new account
         with self.app.test_client() as c:
             resp = c.post('/register', data={
+                'username': 'rdegges',
                 'given_name': 'Randall',
                 'middle_name': 'Clark',
                 'surname': 'Degges',
@@ -43,7 +44,6 @@ class TestSignals(StormpathTestCase):
         self.assertEqual(created_user['email'], 'r@rdegges.com')
         self.assertEqual(created_user['surname'], 'Degges')
 
-    @skip('StormpathForm.data (returns empty {}) ::AttributeError::')
     def test_user_logged_in_signal(self):
         # Subscribe to signals for user login
         signal_receiver = SignalReceiver()

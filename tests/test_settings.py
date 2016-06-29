@@ -2,15 +2,11 @@
 
 
 from datetime import timedelta
-from os import close, environ, remove, write
-from tempfile import mkstemp
-
+from os import environ
 from flask.ext.stormpath.errors import ConfigurationError
 from flask.ext.stormpath.settings import (
     StormpathSettings)
-
 from .helpers import StormpathTestCase
-from unittest import skip
 
 
 class TestInitSettings(StormpathTestCase):
