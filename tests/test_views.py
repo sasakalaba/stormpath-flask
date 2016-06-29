@@ -2,7 +2,7 @@
 
 
 from flask.ext.stormpath.models import User
-from .helpers import StormpathTestCase, AppWrapper
+from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import make_stormpath_response, request_wants_json
 from flask import session
@@ -23,7 +23,8 @@ class StormpathViewTestCase(StormpathTestCase):
         self.default_wsgi_app = self.app.wsgi_app
 
         # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = AppWrapper(self.default_wsgi_app, self.html_header)
+        self.app.wsgi_app = HttpAcceptWrapper(
+            self.default_wsgi_app, self.html_header)
 
         # Create a user.
         with self.app.app_context():
@@ -43,7 +44,8 @@ class StormpathViewTestCase(StormpathTestCase):
            views."""
 
         # Set our request type to json.
-        self.app.wsgi_app = AppWrapper(self.default_wsgi_app, self.json_header)
+        self.app.wsgi_app = HttpAcceptWrapper(
+            self.default_wsgi_app, self.json_header)
 
         with self.app.test_client() as c:
             # Create a request.
@@ -112,7 +114,7 @@ class TestHelperFunctions(StormpathViewTestCase):
             self.assertFalse(request_wants_json())
 
             # Add an 'text/html' accept header
-            self.app.wsgi_app = AppWrapper(
+            self.app.wsgi_app = HttpAcceptWrapper(
                 self.default_wsgi_app, self.json_header)
 
             # Ensure that request_wants_json returns True if 'text/html'

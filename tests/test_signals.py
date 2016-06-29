@@ -7,7 +7,7 @@ from flask_stormpath.models import (
     user_deleted,
     user_updated
 )
-from .helpers import StormpathTestCase, SignalReceiver, AppWrapper
+from .helpers import StormpathTestCase, SignalReceiver, HttpAcceptWrapper
 
 
 class TestSignals(StormpathTestCase):
@@ -15,7 +15,8 @@ class TestSignals(StormpathTestCase):
     def setUp(self):
         super(TestSignals, self).setUp()
         self.html_header = 'text/html,application/xhtml+xml,application/xml;'
-        self.app.wsgi_app = AppWrapper(self.app.wsgi_app, self.html_header)
+        self.app.wsgi_app = HttpAcceptWrapper(
+            self.app.wsgi_app, self.html_header)
 
     def test_user_created_signal(self):
         # Subscribe to signals for user creation

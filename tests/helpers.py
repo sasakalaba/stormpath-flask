@@ -69,7 +69,7 @@ class SignalReceiver(object):
         self.received_signals.append((sender, user))
 
 
-class AppWrapper(object):
+class HttpAcceptWrapper(object):
     """
     Helper class for injecting HTTP headers.
     """
