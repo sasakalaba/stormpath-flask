@@ -458,6 +458,28 @@ class TestRegister(StormpathViewTestCase):
             'post', 'register', 409, json.dumps(expected_response),
             **request_kwargs)
 
+    def test_json_response_form_error(self):
+        # Specify post data
+        json_data = json.dumps({
+            'username': 'rdegges',
+            'email': 'r@rdegges.com',
+            'middle_name': 'Clark',
+            'surname': 'Degges',
+            'password': 'woot1LoveCookies!'})
+
+        # Specify expected response
+        expected_response = {
+            'message': {"given_name": ["First Name is required."]},
+            'status': 400}
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
+        self.assertJsonResponse(
+            'post', 'register', 400, json.dumps(expected_response),
+            **request_kwargs)
+
 
 class TestLogin(StormpathViewTestCase):
     """Test our login view."""
@@ -572,6 +594,24 @@ class TestLogin(StormpathViewTestCase):
         request_kwargs = {
             'data': json_data,
             'content_type': 'application/json'}
+        self.assertJsonResponse(
+            'post', 'login', 400, json.dumps(expected_response),
+            **request_kwargs)
+
+    def test_json_response_form_error(self):
+        # Specify post data
+        json_data = json.dumps({
+            'password': 'woot1LoveCookies!'})
+
+        # Specify expected response
+        expected_response = {
+            'message': {"login": ["Username or Email is required."]},
+            'status': 400}
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
         self.assertJsonResponse(
             'post', 'login', 400, json.dumps(expected_response),
             **request_kwargs)

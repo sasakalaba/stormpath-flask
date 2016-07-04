@@ -73,7 +73,14 @@ def register():
         # processing.
 
         if not form.validate_on_submit():
-            # If form.data is not valid, flash error messages.
+            # If form.data is not valid, return error messages.
+            if request_wants_json():
+                return make_stormpath_response(
+                    data=json.dumps({
+                        'status': 400,
+                        'message': form.errors}),
+                    status_code=400)
+
             for field_error in form.errors.keys():
                 flash(form.errors[field_error][0])
 
@@ -124,11 +131,6 @@ def register():
                 flash(err.message.get('message'))
 
     if request_wants_json():
-        if form.errors:
-            return make_stormpath_response(
-                data=json.dumps({
-                    'status': 400,
-                    'message': form.errors}))
         return make_stormpath_response(data=form.json)
 
     return make_stormpath_response(
@@ -153,34 +155,48 @@ def login():
     # create our class first, and then create the instance
     form = StormpathForm.specialize_form(login_config['form'])()
 
-    # If we received a POST request with valid information, we'll continue
-    # processing.
-    if form.validate_on_submit():
-        try:
-            # Try to fetch the user's account from Stormpath.  If this
-            # fails, an exception will be raised.
-            account = User.from_login(form.login.data, form.password.data)
+    if request.method == 'POST':
+        # If we received a POST request with valid information, we'll continue
+        # processing.
 
-            # If we're able to successfully retrieve the user's account,
-            # we'll log the user in (creating a secure session using
-            # Flask-Login), then redirect the user to the ?next=<url>
-            # query parameter, or the Stormpath login nextUri setting.
-            login_user(account, remember=True)
-
-            if request_wants_json():
-                return make_stormpath_response(data=current_user.to_json())
-
-            return redirect(request.args.get('next') or login_config[
-                'nextUri'])
-
-        except StormpathError as err:
+        if not form.validate_on_submit():
+            # If form.data is not valid, return error messages.
             if request_wants_json():
                 return make_stormpath_response(
-                    json.dumps({
-                        'error': err.status if err.status else 400,
-                        'message': err.message.get('message')}),
+                    data=json.dumps({
+                        'status': 400,
+                        'message': form.errors}),
                     status_code=400)
-            flash(err.message.get('message'))
+
+            for field_error in form.errors.keys():
+                flash(form.errors[field_error][0])
+
+        else:
+            try:
+                # Try to fetch the user's account from Stormpath.  If this
+                # fails, an exception will be raised.
+                account = User.from_login(form.login.data, form.password.data)
+
+                # If we're able to successfully retrieve the user's account,
+                # we'll log the user in (creating a secure session using
+                # Flask-Login), then redirect the user to the ?next=<url>
+                # query parameter, or the Stormpath login nextUri setting.
+                login_user(account, remember=True)
+
+                if request_wants_json():
+                    return make_stormpath_response(data=current_user.to_json())
+
+                return redirect(request.args.get('next') or login_config[
+                    'nextUri'])
+
+            except StormpathError as err:
+                if request_wants_json():
+                    return make_stormpath_response(
+                        json.dumps({
+                            'error': err.status if err.status else 400,
+                            'message': err.message.get('message')}),
+                        status_code=400)
+                flash(err.message.get('message'))
 
     if request_wants_json():
         return make_stormpath_response(data=form.json)
