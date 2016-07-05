@@ -28,6 +28,9 @@ else:
     FACEBOOK = True
 
 
+""" Helper functions. """
+
+
 def make_stormpath_response(
         data, template=None, return_json=True, status_code=200):
     if return_json:
@@ -44,6 +47,8 @@ def request_wants_json():
     if best is None and current_app.config['stormpath']['web']['produces']:
         best = current_app.config['stormpath']['web']['produces'][0]
     return best == 'application/json'
+
+""" View functions. """
 
 
 def register():
