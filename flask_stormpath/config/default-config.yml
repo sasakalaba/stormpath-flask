@@ -175,6 +175,16 @@ web:
     uri: "/forgot"
     template: "flask_stormpath/forgot.html"
     nextUri: "/login?status=forgot"
+    form:
+      fields:
+        email:
+          enabled: true
+          label: "Email"
+          placeholder: "Email"
+          required: true
+          type: "email"
+      fieldOrder:
+        - "email"
 
   # Unless changePassword.enabled is explicitly set to false, this feature
   # will be automatically enabled if the default account store for the defined

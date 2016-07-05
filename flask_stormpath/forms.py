@@ -88,16 +88,6 @@ class StormpathForm(Form):
         return json.dumps(self._json)
 
 
-class ForgotPasswordForm(Form):
-    """
-    Retrieve a user's email address for initializing the password reset
-    workflow.
-
-    This class is used to retrieve a user's email address.
-    """
-    email = StringField('Email', validators=[InputRequired()])
-
-
 class ChangePasswordForm(Form):
     """
     Change a user's password.

@@ -486,6 +486,8 @@ class TestLogin(StormpathViewTestCase):
 
     def setUp(self):
         super(TestLogin, self).setUp()
+        # We need to set form fields to test out json stuff in the
+        # assertJsonResponse method.
         self.form_fields = self.app.config['stormpath']['web']['login'][
             'form']['fields']
 
@@ -642,6 +644,13 @@ class TestLogout(StormpathViewTestCase):
 class TestForgot(StormpathViewTestCase):
     """Test our forgot view."""
 
+    def setUp(self):
+        super(TestForgot, self).setUp()
+        # We need to set form fields to test out json stuff in the
+        # assertJsonResponse method.
+        self.form_fields = self.app.config['stormpath']['web'][
+            'forgotPassword']['form']['fields']
+
     def test_proper_template_rendering(self):
         # Ensure that proper templates are rendered based on the request
         # method.
@@ -667,7 +676,7 @@ class TestForgot(StormpathViewTestCase):
             resp = c.post('/forgot', data={'email': 'rdegges'})
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(
-                'Invalid email address.' in resp.data.decode('utf-8'))
+                'Email must be in valid format.' in resp.data.decode('utf-8'))
 
             # Ensure than en email wasn't sent if an email that doesn't exist
             # in our database was entered.
@@ -682,6 +691,66 @@ class TestForgot(StormpathViewTestCase):
             self.assertTrue(
                 'Your password reset email has been sent!' in
                 resp.data.decode('utf-8'))
+
+    def test_json_response_get(self):
+        # Specify expected response.
+        expected_response = [
+            {'label': 'Email',
+             'name': 'email',
+             'placeholder': 'Email',
+             'required': True,
+             'type': 'email'}]
+
+        self.assertJsonResponse(
+            'get', 'forgot', 200, json.dumps(expected_response))
+
+    def test_json_response_valid_form(self):
+        # Specify expected response.
+        expected_response = {
+            'status': 200,
+            'message': {"email": "r@rdegges.com"}
+        }
+
+        # Specify post data
+        json_data = json.dumps({'email': 'r@rdegges.com'})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+        self.assertJsonResponse(
+            'post', 'forgot', 200, json.dumps(expected_response),
+            **request_kwargs)
+
+    def test_json_response_stormpath_error(self):
+        # Specify post data
+        json_data = json.dumps({'email': 'wrong@email.com'})
+
+        # Specify expected response
+        expected_response = {
+            'message': 'Invalid email address.',
+            'status': 400}
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+        self.assertJsonResponse(
+            'post', 'forgot', 400, json.dumps(expected_response),
+            **request_kwargs)
+
+    def test_json_response_form_error(self):
+        # Specify post data
+        json_data = json.dumps({'email': 'rdegges'})
+
+        # Specify expected response
+        expected_response = {
+            'message': {"email": ["Email must be in valid format."]},
+            'status': 400}
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
+        self.assertJsonResponse(
+            'post', 'forgot', 400, json.dumps(expected_response),
+            **request_kwargs)
 
 
 class TestMe(StormpathViewTestCase):
