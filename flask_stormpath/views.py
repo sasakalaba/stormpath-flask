@@ -119,11 +119,12 @@ def register():
 
             except StormpathError as err:
                 if request_wants_json():
+                    status_code = err.status if err.status else 400
                     return make_stormpath_response(
                         json.dumps({
-                            'error': err.status if err.status else 400,
+                            'error': status_code,
                             'message': err.message.get('message')}),
-                        status_code=err.status)
+                        status_code=status_code)
                 flash(err.message.get('message'))
 
     if request_wants_json():
@@ -187,11 +188,12 @@ def login():
 
             except StormpathError as err:
                 if request_wants_json():
+                    status_code = err.status if err.status else 400
                     return make_stormpath_response(
                         json.dumps({
-                            'error': err.status if err.status else 400,
+                            'error': status_code,
                             'message': err.message.get('message')}),
-                        status_code=400)
+                        status_code=status_code)
                 flash(err.message.get('message'))
 
     if request_wants_json():
@@ -268,11 +270,12 @@ def forgot():
                     error_msg = 'Invalid email address.'
 
                 if request_wants_json():
+                    status_code = err.status if err.status else 400
                     return make_stormpath_response(
                         json.dumps({
-                            'status': err.status if err.status else 400,
+                            'status': status_code,
                             'message': error_msg}),
-                        status_code=400)
+                        status_code=status_code)
                 flash(error_msg)
 
     if request_wants_json():
