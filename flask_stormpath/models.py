@@ -8,6 +8,7 @@ from blinker import Namespace
 
 from stormpath.resources.account import Account
 from stormpath.resources.provider import Provider
+from datetime import datetime
 import json
 
 
@@ -73,14 +74,24 @@ class User(Account):
 
     def to_json(self):
         writable_attrs = (
+            'href',
+            'modified_at',
+            'created_at',
+            'status',
             'username',
             'email',
             'given_name',
             'middle_name',
             'surname',
-            'status')
-        return json.dumps({'account': {
-            key: getattr(self, key, None) for key in writable_attrs}})
+            'full_name'
+        )
+
+        json_data = {'account': {}}
+        for key in writable_attrs:
+            attr = getattr(self, key, None)
+            json_data['account'][key] = (
+                attr if not isinstance(attr, datetime) else attr.isoformat())
+        return json.dumps(json_data)
 
     @classmethod
     def create(

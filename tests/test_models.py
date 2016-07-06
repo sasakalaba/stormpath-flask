@@ -15,6 +15,7 @@ class TestUser(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             self.user = User.create(
+                username='rdegges',
                 email='r@rdegges.com',
                 password='woot1LoveCookies!',
                 given_name='Randall',
@@ -164,10 +165,15 @@ class TestUser(StormpathTestCase):
         self.assertTrue(isinstance(self.user.to_json(), str))
         json_data = json.loads(self.user.to_json())
         expected_json_data = {'account': {
-            'username': self.user.username,
-            'email': self.user.email,
-            'given_name': self.user.given_name,
-            'middle_name': self.user.middle_name,
-            'surname': self.user.surname,
-            'status': self.user.status}}
+            'href': self.user.href,
+            'modified_at': self.user.modified_at.isoformat(),
+            'created_at': self.user.created_at.isoformat(),
+            'status': 'ENABLED',
+            'username': 'rdegges',
+            'email': 'r@rdegges.com',
+            'given_name': 'Randall',
+            'middle_name': None,
+            'surname': 'Degges',
+            'full_name': 'Randall Degges'
+        }}
         self.assertEqual(json_data, expected_json_data)
