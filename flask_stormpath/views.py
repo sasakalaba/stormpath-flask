@@ -259,7 +259,7 @@ def forgot():
                         status_code=200)
 
                 return make_stormpath_response(
-                    template='flask_stormpath/forgot_email_sent.html',
+                    template=forgot_config['templateSuccess'],
                     data={'user': account}, return_json=False)
 
             except StormpathError as err:
@@ -341,7 +341,7 @@ def forgot_change():
                     return make_stormpath_response(data=current_user.to_json())
 
                 return make_stormpath_response(
-                    template='flask_stormpath/forgot_complete.html',
+                    template=change_config['templateSuccess'],
                     data={'form': form}, return_json=False)
 
             except StormpathError as err:
