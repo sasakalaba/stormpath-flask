@@ -196,6 +196,23 @@ web:
     nextUri: "/login?status=reset"
     template: "flask_stormpath/forgot_change.html"
     errorUri: "/forgot?status=invalid_sptoken"
+    form:
+      fields:
+        password:
+          enabled: true
+          label: "Password"
+          placeholder: "Password"
+          required: true
+          type: "password"
+        confirmPassword:
+          enabled: true
+          label: "Confirm Password"
+          placeholder: "Confirm Password"
+          required: true
+          type: "password"
+      fieldOrder:
+        - "password"
+        - "confirmPassword"
 
   # If idSite.enabled is true, the user should be redirected to ID site for
   # login, registration, and password reset.  They should also be redirected

@@ -18,7 +18,7 @@ from stormpath.resources.provider import Provider
 from stormpath.resources import Expansion
 
 from . import StormpathError, logout_user
-from .forms import ChangePasswordForm, StormpathForm
+from .forms import StormpathForm
 from .models import User
 
 if sys.version_info.major == 3:
@@ -309,38 +309,63 @@ def forgot_change():
     except StormpathError as err:
         abort(400)
 
-    form = ChangePasswordForm()
+    change_config = current_app.config['stormpath']['web']['changePassword']
+    form = StormpathForm.specialize_form(change_config['form'])()
 
-    # If we received a POST request with valid information, we'll continue
-    # processing.
-    if form.validate_on_submit():
-        try:
-            # Update this user's passsword.
-            account.password = form.password.data
-            account.save()
+    if request.method == 'POST':
+        # If we received a POST request with valid information, we'll continue
+        # processing.
+        if not form.validate_on_submit():
+            # If form.data is not valid, return error messages.
+            if request_wants_json():
+                return make_stormpath_response(
+                    data=json.dumps({
+                        'status': 400,
+                        'message': form.errors}),
+                    status_code=400)
 
-            # Log this user into their account.
-            account = User.from_login(account.email, form.password.data)
-            login_user(account, remember=True)
+            for field_error in form.errors.keys():
+                flash(form.errors[field_error][0])
 
-            return render_template(current_app.config[
-                'STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE'])
-        except StormpathError as err:
-            if (isinstance(err.message, string_types) and
-                    'https' in err.message.lower()):
-                flash('Something went wrong! Please try again.')
-            else:
-                flash(err.message.get('message'))
+        else:
+            try:
+                # Update this user's passsword.
+                account.password = form.password.data
+                account.save()
 
-    # If this is a POST request, and the form isn't valid, this means the
-    # user's password was no good, so we'll display a message.
-    elif request.method == 'POST':
-        flash("Passwords don't match.")
+                # Log this user into their account.
+                account = User.from_login(account.email, form.password.data)
+                login_user(account, remember=True)
 
-    return render_template(
-        current_app.config['web']['changePassword']['template'],
-        form=form,
-    )
+                if request_wants_json():
+                    return make_stormpath_response(data=current_user.to_json())
+
+                return make_stormpath_response(
+                    template='flask_stormpath/forgot_complete.html',
+                    data={'form': form}, return_json=False)
+
+            except StormpathError as err:
+                if (isinstance(err.message, string_types) and
+                        'https' in err.message.lower()):
+                    error_msg = 'Something went wrong! Please try again.'
+                else:
+                    error_msg = err.message.get('message')
+
+                if request_wants_json():
+                    status_code = err.status if err.status else 400
+                    return make_stormpath_response(
+                        json.dumps({
+                            'status': status_code,
+                            'message': error_msg}),
+                        status_code=status_code)
+                flash(error_msg)
+
+    if request_wants_json():
+        return make_stormpath_response(data=form.json)
+
+    return make_stormpath_response(
+        template=change_config['template'], data={'form': form},
+        return_json=False)
 
 
 def facebook_login():

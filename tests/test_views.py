@@ -6,6 +6,7 @@ from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import make_stormpath_response, request_wants_json
 from flask import session
+from flask.ext.login import current_user
 import json
 
 
@@ -751,6 +752,184 @@ class TestForgot(StormpathViewTestCase):
         self.assertJsonResponse(
             'post', 'forgot', 400, json.dumps(expected_response),
             **request_kwargs)
+
+
+class TestChange(StormpathViewTestCase):
+    """Test our change view."""
+
+    def setUp(self):
+        super(TestChange, self).setUp()
+        # We need to set form fields to test out json stuff in the
+        # assertJsonResponse method.
+        self.form_fields = self.app.config['stormpath']['web'][
+            'changePassword']['form']['fields']
+
+        # Generate a token
+        self.token = self.application.password_reset_tokens.create(
+            {'email': 'r@rdegges.com'}).token
+        self.reset_password_url = ''.join(['change?sptoken=', self.token])
+
+    def test_proper_template_rendering(self):
+        # Ensure that proper templates are rendered based on the request
+        # method.
+        with self.app.test_client() as c:
+            # Ensure request.GET will render the forgot_change.html template.
+            resp = c.get(self.reset_password_url)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Enter your new account password below.' in
+                resp.data.decode('utf-8'))
+
+            # Ensure that request.POST will render the forgot_complete.html
+            resp = c.post(self.reset_password_url, data={
+                'password': 'woot1DontLoveCookies!',
+                'confirm_password': 'woot1DontLoveCookies!'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Your password has been changed, and you have been logged' +
+                ' into' in resp.data.decode('utf-8'))
+
+    def test_error_messages(self):
+        with self.app.test_client() as c:
+            # Ensure than en email wasn't changed if password and confirm
+            # password don't match.
+            resp = c.post(
+                self.reset_password_url,
+                data={
+                    'password': 'woot1DontLoveCookies!',
+                    'confirm_password': 'woot1DoLoveCookies!'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Passwords do not match.' in resp.data.decode('utf-8'))
+
+            # Ensure than en email wasn't changed if one of the password
+            # fields is left empty
+            resp = c.post(
+                self.reset_password_url,
+                data={'password': 'woot1DontLoveCookies!'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Confirm Password is required.' in resp.data.decode('utf-8'))
+
+            # Ensure than en email wasn't changed if passwords don't satisfy
+            # minimum requirements (one number, one uppercase letter, minimum
+            # length).
+            resp = c.post(
+                self.reset_password_url,
+                data={
+                    'password': 'woot',
+                    'confirm_password': 'woot'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Account password minimum length not satisfied.' in
+                resp.data.decode('utf-8'))
+
+    def test_sptoken(self):
+        # Ensure that a proper token will render the change view
+        with self.app.test_client() as c:
+            # Ensure request.GET will render the forgot_change.html template.
+            resp = c.get(self.reset_password_url)
+            self.assertEqual(resp.status_code, 200)
+
+        # Ensure that a missing token will return a 400 error
+        with self.app.test_client() as c:
+            # Ensure request.GET will render the forgot_change.html template.
+            resp = c.get('/change')
+            self.assertEqual(resp.status_code, 400)
+
+    def test_password_changed_and_logged_in(self):
+        with self.app.test_client() as c:
+            # Ensure that a user will be logged in after successful password
+            # reset.
+            self.assertFalse(current_user)
+            resp = c.post(
+                self.reset_password_url,
+                data={
+                    'password': 'woot1DontLoveCookies!',
+                    'confirm_password': 'woot1DontLoveCookies!'})
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(current_user.email, 'r@rdegges.com')
+
+        # Ensure that our password changed.
+        with self.app.app_context():
+            User.from_login('r@rdegges.com', 'woot1DontLoveCookies!')
+
+    def test_json_response_get(self):
+        # Specify expected response.
+        expected_response = [
+            {'label': 'Password',
+             'name': 'password',
+             'placeholder': 'Password',
+             'required': True,
+             'type': 'password'},
+            {'label': 'Confirm Password',
+             'name': 'confirm_password',
+             'placeholder': 'Confirm Password',
+             'required': True,
+             'type': 'password'}]
+
+        self.assertJsonResponse(
+            'get', self.reset_password_url, 200, json.dumps(expected_response))
+
+    def test_json_response_valid_form(self):
+        # Specify expected response.
+        expected_response = {'account': {
+            'username': 'randalldeg',
+            'email': 'r@rdegges.com',
+            'given_name': 'Randall',
+            'middle_name': None,
+            'surname': 'Degges',
+            'status': 'ENABLED'}
+        }
+
+        # Specify post data
+        json_data = json.dumps({
+            'password': 'woot1DontLoveCookies!',
+            'confirm_password': 'woot1DontLoveCookies!'})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+        self.assertJsonResponse(
+            'post', self.reset_password_url, 200,
+            json.dumps(expected_response), **request_kwargs)
+
+        # Ensure that our password changed.
+        with self.app.app_context():
+            User.from_login('r@rdegges.com', 'woot1DontLoveCookies!')
+
+    def test_json_response_stormpath_error(self):
+        # Specify post data
+        json_data = json.dumps({
+            'password': 'woot',
+            'confirm_password': 'woot'})
+
+        # Specify expected response
+        expected_response = {
+            'message': 'Account password minimum length not satisfied.',
+            'status': 400}
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+        self.assertJsonResponse(
+            'post', self.reset_password_url, 400,
+            json.dumps(expected_response), **request_kwargs)
+
+    def test_json_response_form_error(self):
+        # Specify post data
+        json_data = json.dumps({'password': 'woot1DontLoveCookies!'})
+
+        # Specify expected response
+        expected_response = {
+            'message': {"confirm_password": ["Confirm Password is required."]},
+            'status': 400}
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
+        self.assertJsonResponse(
+            'post', self.reset_password_url, 400,
+            json.dumps(expected_response), **request_kwargs)
 
 
 class TestMe(StormpathViewTestCase):
