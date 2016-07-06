@@ -65,10 +65,8 @@ class TestStormpathForm(StormpathTestCase):
                     self.assertTrue(getattr(form, form_field).args[0], config[
                         'fields'][field]['label'])
 
-    def test_login_form_building(self):
-        # Check if the login form is built as specified in the config file.
-        form_config = self.app.config['stormpath']['web']['login']['form']
-
+    def assertFormBuilding(self, form_config):
+        # Ensure that forms are built based on the config specs.
         with self.app.app_context():
             form = StormpathForm.specialize_form(form_config)
             self.assertFormFields(form, form_config)
@@ -78,24 +76,27 @@ class TestStormpathForm(StormpathTestCase):
             new_form = StormpathForm()
             field_diff = list(set(form_config['fieldOrder']) - set(
                 dir(new_form)))
+            field_diff.sort(), form_config['fieldOrder'].sort()
             self.assertEqual(field_diff, form_config['fieldOrder'])
 
+    def test_login_form_building(self):
+        form_config = self.app.config['stormpath']['web']['login']['form']
+        self.assertFormBuilding(form_config)
+
     def test_registration_form_building(self):
-        # Check if the registration form is built as specified in the config
-        # file.
         form_config = self.app.config['stormpath']['web']['register']['form']
         form_config['fields']['confirmPassword']['enabled'] = True
+        self.assertFormBuilding(form_config)
 
-        with self.app.app_context():
-            form = StormpathForm.specialize_form(form_config)
-            self.assertFormFields(form, form_config)
+    def test_forgot_password_form_building(self):
+        form_config = self.app.config['stormpath']['web']['forgotPassword'][
+            'form']
+        self.assertFormBuilding(form_config)
 
-            # Check to see if the StormpathFrom base class is left unaltered
-            # after form building.
-            new_form = StormpathForm()
-            field_diff = list(set(form_config['fieldOrder']) - set(
-                dir(new_form)))
-            self.assertEqual(set(field_diff), set(form_config['fieldOrder']))
+    def test_change_password_form_building(self):
+        form_config = self.app.config['stormpath']['web']['changePassword'][
+            'form']
+        self.assertFormBuilding(form_config)
 
     def test_error_messages(self):
         # We'll use register form fields for this test, since they cover
