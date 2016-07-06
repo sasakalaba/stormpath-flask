@@ -15,7 +15,6 @@ class TestUser(StormpathTestCase):
         # Create a user.
         with self.app.app_context():
             self.user = User.create(
-                username='rdegges',
                 email='r@rdegges.com',
                 password='woot1LoveCookies!',
                 given_name='Randall',
@@ -169,7 +168,7 @@ class TestUser(StormpathTestCase):
             'modified_at': self.user.modified_at.isoformat(),
             'created_at': self.user.created_at.isoformat(),
             'status': 'ENABLED',
-            'username': 'rdegges',
+            'username': 'r@rdegges.com',
             'email': 'r@rdegges.com',
             'given_name': 'Randall',
             'middle_name': None,

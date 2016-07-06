@@ -40,7 +40,8 @@ class StormpathViewTestCase(StormpathTestCase):
         return any(st in header for header in headers)
 
     def assertJsonResponse(
-            self, method, view, status_code, expected_response, **kwargs):
+            self, method, view, status_code, expected_response,
+            user_to_json=False, **kwargs):
         """Custom assert for testing json responses on flask_stormpath
            views."""
 
@@ -95,8 +96,26 @@ class StormpathViewTestCase(StormpathTestCase):
                 # stormpath error is returned.
                 self.assertTrue('data' in kwargs.keys())
 
-            # Ensure that response data is the same as the expected data.
-            self.assertEqual(resp.data, expected_response)
+            # If we're comparing json response with account info,  make sure
+            # that the following values are present in the response and pop
+            # them, since we cannot predetermine these values in our expected
+            # response.
+            if user_to_json:
+                resp_data = json.loads(resp.data)
+                undefined_data = ('href', 'modified_at', 'created_at')
+                self.assertTrue(
+                    all(key in resp_data['account'].keys()
+                        for key in undefined_data))
+                for key in undefined_data:
+                    resp_data['account'].pop(key)
+                expected_response = json.loads(expected_response)
+
+                # Ensure that response data is the same as the expected data.
+                self.assertEqual(resp_data, expected_response)
+
+            else:
+                # Ensure that response data is the same as the expected data.
+                self.assertEqual(resp.data, expected_response)
 
 
 class TestHelperFunctions(StormpathViewTestCase):
@@ -423,6 +442,7 @@ class TestRegister(StormpathViewTestCase):
         # Specify expected response.
         expected_response = {'account': user_data.copy()}
         expected_response['account']['status'] = 'ENABLED'
+        expected_response['account']['full_name'] = 'Randall2 Degges2'
         expected_response['account'].pop('password')
 
         # Specify post data
@@ -433,7 +453,7 @@ class TestRegister(StormpathViewTestCase):
 
         self.assertJsonResponse(
             'post', 'register', 200, json.dumps(expected_response),
-            **request_kwargs)
+            user_to_json=True, **request_kwargs)
 
     def test_json_response_stormpath_error(self):
         # Specify post data
@@ -570,6 +590,7 @@ class TestLogin(StormpathViewTestCase):
             'given_name': 'Randall',
             'middle_name': None,
             'surname': 'Degges',
+            'full_name': 'Randall Degges',
             'status': 'ENABLED'}
         }
 
@@ -582,7 +603,7 @@ class TestLogin(StormpathViewTestCase):
             'content_type': 'application/json'}
         self.assertJsonResponse(
             'post', 'login', 200, json.dumps(expected_response),
-            **request_kwargs)
+            user_to_json=True, **request_kwargs)
 
     def test_json_response_stormpath_error(self):
         # Specify post data
@@ -879,6 +900,7 @@ class TestChange(StormpathViewTestCase):
             'given_name': 'Randall',
             'middle_name': None,
             'surname': 'Degges',
+            'full_name': 'Randall Degges',
             'status': 'ENABLED'}
         }
 
@@ -891,7 +913,8 @@ class TestChange(StormpathViewTestCase):
             'content_type': 'application/json'}
         self.assertJsonResponse(
             'post', self.reset_password_url, 200,
-            json.dumps(expected_response), **request_kwargs)
+            json.dumps(expected_response), user_to_json=True,
+            **request_kwargs)
 
         # Ensure that our password changed.
         with self.app.app_context():
