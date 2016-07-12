@@ -28,8 +28,8 @@ class StormpathForm(Form):
             # Make sure that the original class is left unaltered.
             pass
 
-        field_list = config['fields']
-        field_order = config['fieldOrder']
+        field_list = config.get('fields', {})
+        field_order = config.get('fieldOrder', [])
 
         setattr(cls, '_json', [])
 

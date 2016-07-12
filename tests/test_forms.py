@@ -6,7 +6,6 @@ from flask_stormpath.forms import StormpathForm
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, Email, EqualTo
 from stormpath.resources import Resource
-from collections import OrderedDict
 import json
 
 
@@ -97,6 +96,12 @@ class TestStormpathForm(StormpathTestCase):
         form_config = self.app.config['stormpath']['web']['changePassword'][
             'form']
         self.assertFormBuilding(form_config)
+
+    def test_empty_form(self):
+        # Ensure that an empty config will return an empty form.
+        with self.app.app_context():
+            form = StormpathForm.specialize_form({})
+            self.assertEqual(form._json, [])
 
     def test_error_messages(self):
         # We'll use register form fields for this test, since they cover
