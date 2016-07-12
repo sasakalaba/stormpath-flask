@@ -4,8 +4,8 @@
 from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
-from flask_stormpath.views import make_stormpath_response, request_wants_json
-from flask import session
+from flask_stormpath.views import StormpathView
+from flask import session, url_for
 from flask.ext.login import current_user
 import json
 
@@ -118,14 +118,15 @@ class StormpathViewTestCase(StormpathTestCase):
                 self.assertEqual(resp.data, expected_response)
 
 
-class TestHelperFunctions(StormpathViewTestCase):
+class TestHelperMethods(StormpathViewTestCase):
     """Test our helper functions."""
     def test_request_wants_json(self):
+        view = StormpathView({})
         with self.app.test_client() as c:
             # Ensure that request_wants_json returns False if 'text/html'
             # accept header is present.
             c.get('/')
-            self.assertFalse(request_wants_json())
+            self.assertFalse(view.request_wants_json())
 
             # Add an 'text/html' accept header
             self.app.wsgi_app = HttpAcceptWrapper(
@@ -134,14 +135,15 @@ class TestHelperFunctions(StormpathViewTestCase):
             # Ensure that request_wants_json returns True if 'text/html'
             # accept header is missing.
             c.get('/')
-            self.assertTrue(request_wants_json())
+            self.assertTrue(view.request_wants_json())
 
     def test_make_stormpath_response(self):
         data = {'foo': 'bar'}
+        view = StormpathView({})
         with self.app.test_client() as c:
             # Ensure that stormpath_response is json if request wants json.
             c.get('/')
-            resp = make_stormpath_response(json.dumps(data))
+            resp = view.make_stormpath_response(json.dumps(data))
             self.assertFalse(self.check_header(
                 'text/html', resp.headers[0]))
             self.assertTrue(self.check_header(
@@ -150,7 +152,7 @@ class TestHelperFunctions(StormpathViewTestCase):
 
             # Ensure that stormpath_response is html if request wants html.
             c.get('/')
-            resp = make_stormpath_response(
+            resp = view.make_stormpath_response(
                 data, template='flask_stormpath/base.html', return_json=False)
             self.assertTrue(isinstance(resp, unicode))
 
@@ -257,15 +259,18 @@ class TestRegister(StormpathViewTestCase):
         self.form_fields['username']['enabled'] = False
 
         with self.app.test_client() as c:
-            # Ensure that the form error is raised if the form is invalid.
+            # Ensure that the form error is raised if the email already
+            # exists.
             resp = c.post('/register', data={
+                'given_name': 'Randall registration',
                 'surname': 'Degges registration',
-                'email': 'r_registration@rdegges.com',
-                'password': 'hilol',
+                'email': 'r@rdegges.com',
+                'password': 'Hilolsds1',
             })
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(
-                'First Name is required.' in resp.data.decode('utf-8'))
+                'Account with that email already exists.'
+                in resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
             # Ensure that an error is raised if an invalid password is
@@ -470,7 +475,7 @@ class TestRegister(StormpathViewTestCase):
             'message': (
                 'Account with that email already exists.' +
                 '  Please choose another email.'),
-            'error': 409}
+            'status': 409}
         request_kwargs = {
             'data': json_data,
             'content_type': 'application/json'}
@@ -614,7 +619,7 @@ class TestLogin(StormpathViewTestCase):
         # Specify expected response
         expected_response = {
             'message': 'Invalid username or password.',
-            'error': 400}
+            'status': 400}
         request_kwargs = {
             'data': json_data,
             'content_type': 'application/json'}
@@ -662,6 +667,27 @@ class TestLogout(StormpathViewTestCase):
             resp = c.get('/logout')
             self.assertEqual(resp.status_code, 302)
 
+    def test_json_response_get(self):
+        # We'll use login form for our json response
+        self.form_fields = self.app.config['stormpath']['web']['login'][
+            'form']['fields']
+
+        # Specify expected response.
+        expected_response = [
+            {'label': 'Username or Email',
+             'name': 'login',
+             'placeholder': 'Username or Email',
+             'required': True,
+             'type': 'text'},
+            {'label': 'Password',
+             'name': 'password',
+             'placeholder': 'Password',
+             'required': True,
+             'type': 'password'}]
+
+        self.assertJsonResponse(
+            'get', 'logout', 200, json.dumps(expected_response))
+
 
 class TestForgot(StormpathViewTestCase):
     """Test our forgot view."""
@@ -693,13 +719,6 @@ class TestForgot(StormpathViewTestCase):
 
     def test_error_messages(self):
         with self.app.test_client() as c:
-            # Ensure than en email wasn't sent if an invalid email format was
-            # entered.
-            resp = c.post('/forgot', data={'email': 'rdegges'})
-            self.assertEqual(resp.status_code, 200)
-            self.assertTrue(
-                'Email must be in valid format.' in resp.data.decode('utf-8'))
-
             # Ensure than en email wasn't sent if an email that doesn't exist
             # in our database was entered.
             resp = c.post('/forgot', data={'email': 'idonot@exist.com'})
@@ -812,26 +831,6 @@ class TestChange(StormpathViewTestCase):
 
     def test_error_messages(self):
         with self.app.test_client() as c:
-            # Ensure than en email wasn't changed if password and confirm
-            # password don't match.
-            resp = c.post(
-                self.reset_password_url,
-                data={
-                    'password': 'woot1DontLoveCookies!',
-                    'confirm_password': 'woot1DoLoveCookies!'})
-            self.assertEqual(resp.status_code, 200)
-            self.assertTrue(
-                'Passwords do not match.' in resp.data.decode('utf-8'))
-
-            # Ensure than en email wasn't changed if one of the password
-            # fields is left empty
-            resp = c.post(
-                self.reset_password_url,
-                data={'password': 'woot1DontLoveCookies!'})
-            self.assertEqual(resp.status_code, 200)
-            self.assertTrue(
-                'Confirm Password is required.' in resp.data.decode('utf-8'))
-
             # Ensure than en email wasn't changed if passwords don't satisfy
             # minimum requirements (one number, one uppercase letter, minimum
             # length).
@@ -961,6 +960,7 @@ class TestMe(StormpathViewTestCase):
         with self.app.test_client() as c:
             email = 'r@rdegges.com'
             password = 'woot1LoveCookies!'
+
             # Authenticate our user.
             resp = c.post('/login', data={
                 'login': email,
@@ -968,7 +968,17 @@ class TestMe(StormpathViewTestCase):
             })
             resp = c.get('/me')
             account = User.from_login(email, password)
+            self.assertEqual(resp.status_code, 200)
             self.assertEqual(resp.data, account.to_json())
 
-    def test_added_expansion(self):
-        self.fail('This will be added when the json issue is addressed.')
+    def test_redirect_to_login(self):
+
+        with self.app.test_client() as c:
+            # Ensure that the user will be redirected to login if he/she is not
+            # logged it.
+            resp = c.get('/me')
+
+            redirect_url = url_for('stormpath.login', next='/me')
+            self.assertEqual(resp.status_code, 302)
+            location = resp.headers.get('location')
+            self.assertTrue(redirect_url in location)

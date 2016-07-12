@@ -58,12 +58,12 @@ from .errors import ConfigurationError
 from .views import (
     google_login,
     facebook_login,
-    forgot,
-    forgot_change,
-    login,
-    logout,
-    register,
-    me
+    RegisterView,
+    LoginView,
+    ForgotView,
+    ChangeView,
+    LogoutView,
+    MeView
 )
 
 
@@ -359,7 +359,7 @@ class StormpathManager(object):
                     base_path,
                     app.config['stormpath']['web']['register']['uri'].strip('/')),
                 'stormpath.register',
-                register,
+                RegisterView.as_view('register'),
                 methods=['GET', 'POST'],
             )
 
@@ -368,7 +368,7 @@ class StormpathManager(object):
                 os.path.join(
                     base_path, app.config['stormpath']['web']['login']['uri'].strip('/')),
                 'stormpath.login',
-                login,
+                LoginView.as_view('login'),
                 methods=['GET', 'POST'],
             )
 
@@ -378,7 +378,7 @@ class StormpathManager(object):
                     base_path,
                     app.config['stormpath']['web']['forgotPassword']['uri'].strip('/')),
                 'stormpath.forgot',
-                forgot,
+                ForgotView.as_view('forgot'),
                 methods=['GET', 'POST'],
             )
             app.add_url_rule(
@@ -386,7 +386,7 @@ class StormpathManager(object):
                     base_path,
                     app.config['stormpath']['web']['changePassword']['uri'].strip('/')),
                 'stormpath.forgot_change',
-                forgot_change,
+                ChangeView.as_view('change'),
                 methods=['GET', 'POST'],
             )
 
@@ -396,7 +396,7 @@ class StormpathManager(object):
                     base_path,
                     app.config['stormpath']['web']['logout']['uri'].strip('/')),
                 'stormpath.logout',
-                logout,
+                LogoutView.as_view('logout'),
             )
 
         if app.config['stormpath']['web']['me']['enabled']:
@@ -405,7 +405,7 @@ class StormpathManager(object):
                     base_path,
                     app.config['stormpath']['web']['me']['uri'].strip('/')),
                 'stormpath.me',
-                me,
+                MeView.as_view('me'),
             )
 
         # if app.config['stormpath']['web']['verifyEmail']['enabled']:

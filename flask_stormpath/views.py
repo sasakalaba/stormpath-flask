@@ -12,6 +12,7 @@ from flask import (
     request,
     make_response
 )
+from flask.views import View
 from flask.ext.login import login_user, login_required, current_user
 from six import string_types
 from stormpath.resources.provider import Provider
@@ -26,346 +27,6 @@ if sys.version_info.major == 3:
 else:
     from facebook import get_user_from_cookie
     FACEBOOK = True
-
-
-""" Helper functions. """
-
-
-def make_stormpath_response(
-        data, template=None, return_json=True, status_code=200):
-    if return_json:
-        stormpath_response = make_response(data, status_code)
-        stormpath_response.mimetype = 'application/json'
-    else:
-        stormpath_response = render_template(template, **data)
-    return stormpath_response
-
-
-def request_wants_json():
-    best = request.accept_mimetypes.best_match(current_app.config[
-        'stormpath']['web']['produces'])
-    if best is None and current_app.config['stormpath']['web']['produces']:
-        best = current_app.config['stormpath']['web']['produces'][0]
-    return best == 'application/json'
-
-""" View functions. """
-
-
-def register():
-    """
-    Register a new user with Stormpath.
-
-    This view will render a registration template, and attempt to create a new
-    user account with Stormpath.
-
-    The fields that are asked for, the URL this view is bound to, and the
-    template that is used to render this page can all be controlled via
-    Flask-Stormpath settings.
-    """
-    register_config = current_app.config['stormpath']['web']['register']
-
-    # We cannot set fields dynamically in the __init__ method, so we'll
-    # create our class first, and then create the instance
-    form = StormpathForm.specialize_form(register_config['form'])()
-    data = form.data
-
-    if request.method == 'POST':
-        # If we received a POST request with valid information, we'll continue
-        # processing.
-
-        if not form.validate_on_submit():
-            # If form.data is not valid, return error messages.
-            if request_wants_json():
-                return make_stormpath_response(
-                    data=json.dumps({
-                        'status': 400,
-                        'message': form.errors}),
-                    status_code=400)
-
-            for field_error in form.errors.keys():
-                flash(form.errors[field_error][0])
-
-        else:
-            # We'll just set the field values to 'Anonymous' if the user
-            # has explicitly said they don't want to collect those fields.
-            for field in ['given_name', 'surname']:
-                if not data.get(field):
-                    data[field] = 'Anonymous'
-
-            # Remove the confirmation password so it won't cause an error
-                if 'confirm_password' in data:
-                    data.pop('confirm_password')
-
-            # Attempt to create the user's account on Stormpath.
-            try:
-                # Create the user account on Stormpath.  If this fails, an
-                # exception will be raised.
-
-                account = User.create(**data)
-                # If we're able to successfully create the user's account,
-                # we'll log the user in (creating a secure session using
-                # Flask-Login), then redirect the user to the
-                # Stormpath login nextUri setting but only if autoLogin.
-                if (register_config['autoLogin'] and not current_app.config[
-                        'stormpath']['web']['verifyEmail']['enabled']):
-                    login_user(account, remember=True)
-
-                if request_wants_json():
-                    return make_stormpath_response(data=account.to_json())
-
-                # Set redirect priority
-                redirect_url = register_config['nextUri']
-                if not redirect_url:
-                    redirect_url = current_app.config['stormpath'][
-                        'web']['login']['nextUri']
-                    if not redirect_url:
-                        redirect_url = '/'
-                return redirect(redirect_url)
-
-            except StormpathError as err:
-                if request_wants_json():
-                    status_code = err.status if err.status else 400
-                    return make_stormpath_response(
-                        json.dumps({
-                            'error': status_code,
-                            'message': err.message.get('message')}),
-                        status_code=status_code)
-                flash(err.message.get('message'))
-
-    if request_wants_json():
-        return make_stormpath_response(data=form.json)
-
-    return make_stormpath_response(
-        template=register_config['template'], data={'form': form},
-        return_json=False)
-
-
-def login():
-    """
-    Log in an existing Stormpath user.
-
-    This view will render a login template, then redirect the user to the next
-    page (if authentication is successful).
-
-    The fields that are asked for, the URL this view is bound to, and the
-    template that is used to render this page can all be controlled via
-    Flask-Stormpath settings.
-    """
-    login_config = current_app.config['stormpath']['web']['login']
-
-    # We cannot set fields dynamically in the __init__ method, so we'll
-    # create our class first, and then create the instance
-    form = StormpathForm.specialize_form(login_config['form'])()
-
-    if request.method == 'POST':
-        # If we received a POST request with valid information, we'll continue
-        # processing.
-
-        if not form.validate_on_submit():
-            # If form.data is not valid, return error messages.
-            if request_wants_json():
-                return make_stormpath_response(
-                    data=json.dumps({
-                        'status': 400,
-                        'message': form.errors}),
-                    status_code=400)
-
-            for field_error in form.errors.keys():
-                flash(form.errors[field_error][0])
-
-        else:
-            try:
-                # Try to fetch the user's account from Stormpath.  If this
-                # fails, an exception will be raised.
-                account = User.from_login(form.login.data, form.password.data)
-
-                # If we're able to successfully retrieve the user's account,
-                # we'll log the user in (creating a secure session using
-                # Flask-Login), then redirect the user to the ?next=<url>
-                # query parameter, or the Stormpath login nextUri setting.
-                login_user(account, remember=True)
-
-                if request_wants_json():
-                    return make_stormpath_response(data=current_user.to_json())
-
-                return redirect(request.args.get('next') or login_config[
-                    'nextUri'])
-
-            except StormpathError as err:
-                if request_wants_json():
-                    status_code = err.status if err.status else 400
-                    return make_stormpath_response(
-                        json.dumps({
-                            'error': status_code,
-                            'message': err.message.get('message')}),
-                        status_code=status_code)
-                flash(err.message.get('message'))
-
-    if request_wants_json():
-        return make_stormpath_response(data=form.json)
-
-    return make_stormpath_response(
-        template=login_config['template'], data={'form': form},
-        return_json=False)
-
-
-def forgot():
-    """
-    Initialize 'password reset' functionality for a user who has forgotten his
-    password.
-
-    This view will render a forgot template, which prompts a user for their
-    email address, then sends a password reset email.
-
-    The URL this view is bound to, and the template that is used to render
-    this page can all be controlled via Flask-Stormpath settings.
-    """
-    forgot_config = current_app.config['stormpath']['web']['forgotPassword']
-    form = StormpathForm.specialize_form(forgot_config['form'])()
-
-    if request.method == 'POST':
-        # If we received a POST request with valid information, we'll continue
-        # processing.
-        if not form.validate_on_submit():
-            # If form.data is not valid, return error messages.
-            if request_wants_json():
-                return make_stormpath_response(
-                    data=json.dumps({
-                        'status': 400,
-                        'message': form.errors}),
-                    status_code=400)
-
-            for field_error in form.errors.keys():
-                flash(form.errors[field_error][0])
-
-        else:
-            try:
-                # Try to fetch the user's account from Stormpath.  If this
-                # fails, an exception will be raised.
-                account = (
-                    current_app.stormpath_manager.application.
-                    send_password_reset_email(form.email.data))
-                account.__class__ = User
-
-                # If we're able to successfully send a password reset email to
-                # this user, we'll display a success page prompting the user
-                # to check their inbox to complete the password reset process.
-
-                if request_wants_json():
-                    return make_stormpath_response(
-                        data=json.dumps({
-                            'status': 200,
-                            'message': {'email': form.data.get('email')}}),
-                        status_code=200)
-
-                return make_stormpath_response(
-                    template=forgot_config['templateSuccess'],
-                    data={'user': account}, return_json=False)
-
-            except StormpathError as err:
-                # If the error message contains 'https', it means something
-                # failed on the network (network connectivity, most likely).
-                if (isinstance(err.message, string_types) and
-                        'https' in err.message.lower()):
-                    error_msg = 'Something went wrong! Please try again.'
-
-                # Otherwise, it means the user is trying to reset an invalid
-                # email address.
-                else:
-                    error_msg = 'Invalid email address.'
-
-                if request_wants_json():
-                    status_code = err.status if err.status else 400
-                    return make_stormpath_response(
-                        json.dumps({
-                            'status': status_code,
-                            'message': error_msg}),
-                        status_code=status_code)
-                flash(error_msg)
-
-    if request_wants_json():
-        return make_stormpath_response(data=form.json)
-
-    return make_stormpath_response(
-         template=forgot_config['template'], data={'form': form},
-         return_json=False)
-
-
-def forgot_change():
-    """
-    Allow a user to change his password.
-
-    This can only happen if a use has reset their password, received the
-    password reset email, then clicked the link in the email which redirects
-    them to this view.
-
-    The URL this view is bound to, and the template that is used to render
-    this page can all be controlled via Flask-Stormpath settings.
-    """
-    try:
-        account = (
-            current_app.stormpath_manager.application.
-            verify_password_reset_token(request.args.get('sptoken')))
-    except StormpathError as err:
-        abort(400)
-
-    change_config = current_app.config['stormpath']['web']['changePassword']
-    form = StormpathForm.specialize_form(change_config['form'])()
-
-    if request.method == 'POST':
-        # If we received a POST request with valid information, we'll continue
-        # processing.
-        if not form.validate_on_submit():
-            # If form.data is not valid, return error messages.
-            if request_wants_json():
-                return make_stormpath_response(
-                    data=json.dumps({
-                        'status': 400,
-                        'message': form.errors}),
-                    status_code=400)
-
-            for field_error in form.errors.keys():
-                flash(form.errors[field_error][0])
-
-        else:
-            try:
-                # Update this user's passsword.
-                account.password = form.password.data
-                account.save()
-
-                # Log this user into their account.
-                account = User.from_login(account.email, form.password.data)
-                login_user(account, remember=True)
-
-                if request_wants_json():
-                    return make_stormpath_response(data=current_user.to_json())
-
-                return make_stormpath_response(
-                    template=change_config['templateSuccess'],
-                    data={'form': form}, return_json=False)
-
-            except StormpathError as err:
-                if (isinstance(err.message, string_types) and
-                        'https' in err.message.lower()):
-                    error_msg = 'Something went wrong! Please try again.'
-                else:
-                    error_msg = err.message.get('message')
-
-                if request_wants_json():
-                    status_code = err.status if err.status else 400
-                    return make_stormpath_response(
-                        json.dumps({
-                            'status': status_code,
-                            'message': error_msg}),
-                        status_code=status_code)
-                flash(error_msg)
-
-    if request_wants_json():
-        return make_stormpath_response(data=form.json)
-
-    return make_stormpath_response(
-        template=change_config['template'], data={'form': form},
-        return_json=False)
 
 
 def facebook_login():
@@ -555,27 +216,331 @@ def google_login():
                     current_app.config['stormpath']['web']['login']['nextUri'])
 
 
-def logout():
+""" Views parent class. """
+
+
+class StormpathView(View):
+    """
+    Class for Stormpath views.
+
+    This class initializes form building through config specs and handles
+    both html and json responses.
+    Specialized logic for each view is handled in the process_request method
+    and should be specified on each child class.
+    """
+
+    def __init__(self, config, *args, **kwargs):
+        self.config = config
+        self.form = (
+            StormpathForm.specialize_form(config['form'])()
+            if config else None)
+
+    def make_stormpath_response(
+            self, data, template=None, return_json=True, status_code=200):
+        """ Create a response based on request type (html or json). """
+        if return_json:
+            stormpath_response = make_response(data, status_code)
+            stormpath_response.mimetype = 'application/json'
+        else:
+            stormpath_response = render_template(template, **data)
+        return stormpath_response
+
+    def request_wants_json(self):
+        """ Check if request wants json or html. """
+        best = request.accept_mimetypes.best_match(current_app.config[
+            'stormpath']['web']['produces'])
+        if best is None and current_app.config['stormpath']['web']['produces']:
+            best = current_app.config['stormpath']['web']['produces'][0]
+        return best == 'application/json'
+
+    def process_request(self):
+        """ Custom logic specialized for each view. Must be implemented in
+            the subclass. """
+        raise StormpathForm('You must implement process_request on your view.')
+
+    def process_stormpath_error(self, error):
+        """ Check for StormpathErrors. """
+        if self.request_wants_json():
+            status_code = error.status if error.status else 400
+            return self.make_stormpath_response(
+                json.dumps({
+                    'status': status_code,
+                    'message': error.message.get('message')}),
+                status_code=status_code)
+        flash(error.message.get('message'))
+        return None
+
+    def dispatch_request(self):
+        """ Basic view skeleton. """
+        if request.method == 'POST':
+            # If we received a POST request with valid information, we'll
+            # continue processing.
+
+            if not self.form.validate_on_submit():
+                # If form.data is not valid, return error messages.
+                if self.request_wants_json():
+                    return self.make_stormpath_response(
+                        data=json.dumps({
+                            'status': 400,
+                            'message': self.form.errors}),
+                        status_code=400)
+                for field_error in self.form.errors.keys():
+                    flash(self.form.errors[field_error][0])
+
+            else:
+                try:
+                    return self.process_request()
+                except StormpathError as error:
+                    stormpath_error = self.process_stormpath_error(error)
+                    if stormpath_error:
+                        return stormpath_error
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(data=self.form.json)
+
+        return self.make_stormpath_response(
+            template=self.config['template'], data={'form': self.form},
+            return_json=False)
+
+
+""" Child views. """
+
+
+class RegisterView(StormpathView):
+    """
+    Register a new user with Stormpath.
+
+    This view will render a registration template, and attempt to create a new
+    user account with Stormpath.
+
+    The fields that are asked for, the URL this view is bound to, and the
+    template that is used to render this page can all be controlled via
+    Flask-Stormpath settings.
+    """
+
+    def __init__(self, *args, **kwargs):
+        config = current_app.config['stormpath']['web']['register']
+        super(RegisterView, self).__init__(config, *args, **kwargs)
+        self.data = self.form.data
+
+    def process_request(self):
+        # We'll just set the field values to 'Anonymous' if the user
+        # has explicitly said they don't want to collect those fields.
+        for field in ['given_name', 'surname']:
+            if not self.data.get(field):
+                self.data[field] = 'Anonymous'
+        # Remove the confirmation password so it won't cause an error
+        if 'confirm_password' in self.data:
+            self.data.pop('confirm_password')
+
+        # Create the user account on Stormpath.  If this fails, an
+        # exception will be raised.
+
+        account = User.create(**self.data)
+        # If we're able to successfully create the user's account,
+        # we'll log the user in (creating a secure session using
+        # Flask-Login), then redirect the user to the
+        # Stormpath login nextUri setting but only if autoLogin.
+        if (self.config['autoLogin'] and not current_app.config[
+                'stormpath']['web']['verifyEmail']['enabled']):
+            login_user(account, remember=True)
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(data=account.to_json())
+
+        # Set redirect priority
+        redirect_url = self.config['nextUri']
+        if not redirect_url:
+            redirect_url = current_app.config['stormpath'][
+                'web']['login']['nextUri']
+            if not redirect_url:
+                redirect_url = '/'
+        return redirect(redirect_url)
+
+
+class LoginView(StormpathView):
+    """
+    Log in an existing Stormpath user.
+
+    This view will render a login template, then redirect the user to the next
+    page (if authentication is successful).
+
+    The fields that are asked for, the URL this view is bound to, and the
+    template that is used to render this page can all be controlled via
+    Flask-Stormpath settings.
+    """
+
+    def __init__(self, *args, **kwargs):
+        config = current_app.config['stormpath']['web']['login']
+        super(LoginView, self).__init__(config, *args, **kwargs)
+
+    def process_request(self):
+        # Try to fetch the user's account from Stormpath.  If this
+        # fails, an exception will be raised.
+        account = User.from_login(
+            self.form.login.data, self.form.password.data)
+
+        # If we're able to successfully retrieve the user's account,
+        # we'll log the user in (creating a secure session using
+        # Flask-Login), then redirect the user to the ?next=<url>
+        # query parameter, or the Stormpath login nextUri setting.
+        login_user(account, remember=True)
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(data=current_user.to_json())
+
+        return redirect(request.args.get('next') or self.config['nextUri'])
+
+
+class ForgotView(StormpathView):
+    """
+    Initialize 'password reset' functionality for a user who has forgotten his
+    password.
+
+    This view will render a forgot template, which prompts a user for their
+    email address, then sends a password reset email.
+
+    The URL this view is bound to, and the template that is used to render
+    this page can all be controlled via Flask-Stormpath settings.
+    """
+
+    def __init__(self, *args, **kwargs):
+        config = current_app.config['stormpath']['web']['forgotPassword']
+        super(ForgotView, self).__init__(config, *args, **kwargs)
+
+    def process_stormpath_error(self, error):
+        # If the error message contains 'https', it means something
+        # failed on the network (network connectivity, most likely).
+        if (isinstance(error.message, string_types) and
+                'https' in error.message.lower()):
+            error.message['message'] = (
+                'Something went wrong! Please try again.')
+
+        # Otherwise, it means the user is trying to reset an invalid
+        # email address.
+        else:
+            error.message['message'] = 'Invalid email address.'
+        return super(ForgotView, self).process_stormpath_error(error)
+
+    def process_request(self):
+        # Try to fetch the user's account from Stormpath.  If this
+        # fails, an exception will be raised.
+        account = (
+            current_app.stormpath_manager.application.
+            send_password_reset_email(self.form.email.data))
+        account.__class__ = User
+
+        # If we're able to successfully send a password reset email to
+        # this user, we'll display a success page prompting the user
+        # to check their inbox to complete the password reset process.
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(
+                data=json.dumps({
+                    'status': 200,
+                    'message': {'email': self.form.data.get('email')}}),
+                status_code=200)
+
+        return self.make_stormpath_response(
+            template=self.config['templateSuccess'],
+            data={'user': account}, return_json=False)
+
+
+class ChangeView(StormpathView):
+    """
+    Allow a user to change his password.
+
+    This can only happen if a use has reset their password, received the
+    password reset email, then clicked the link in the email which redirects
+    them to this view.
+
+    The URL this view is bound to, and the template that is used to render
+    this page can all be controlled via Flask-Stormpath settings.
+    """
+
+    def __init__(self, *args, **kwargs):
+        config = current_app.config['stormpath']['web']['changePassword']
+        super(ChangeView, self).__init__(config, *args, **kwargs)
+        try:
+            self.account = (
+                current_app.stormpath_manager.application.
+                verify_password_reset_token(request.args.get('sptoken')))
+        except StormpathError:
+            abort(400)
+
+    def process_stormpath_error(self, error):
+        # If the error message contains 'https', it means something
+        # failed on the network (network connectivity, most likely).
+        if (isinstance(error.message, string_types) and
+                'https' in error.message.lower()):
+            error.message['message'] = (
+                'Something went wrong! Please try again.')
+        return super(ChangeView, self).process_stormpath_error(error)
+
+    def process_request(self):
+        # Update this user's passsword.
+        self.account.password = self.form.password.data
+        self.account.save()
+
+        # Log this user into their account.
+        account = User.from_login(self.account.email, self.form.password.data)
+        login_user(account, remember=True)
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(data=current_user.to_json())
+
+        return self.make_stormpath_response(
+            template=self.config['templateSuccess'],
+            data={'form': self.form}, return_json=False)
+
+
+class LogoutView(StormpathView):
     """
     Log a user out of their account.
 
     This view will log a user out of their account (destroying their session),
     then redirect the user to the home page of the site.
+
+    .. note::
+        We'll override the default StormpathView logic, since we don't need
+        form and api request validation.
     """
-    logout_user()
-    return redirect(
-        current_app.config['stormpath']['web']['logout']['nextUri'])
+
+    def __init__(self, *args, **kwargs):
+        self.config = current_app.config['stormpath']['web']['logout']
+        self.form = StormpathForm.specialize_form(
+            current_app.config['stormpath']['web']['login']['form'])()
+
+    def dispatch_request(self):
+        logout_user()
+
+        if self.request_wants_json():
+            return self.make_stormpath_response(data=self.form.json)
+
+        return redirect(self.config['nextUri'])
 
 
-@login_required
-def me():
-    expansion = Expansion()
-    for attr, flag in current_app.config['stormpath']['web']['me'][
-            'expand'].items():
-        if flag:
-            expansion.add_property(attr)
-    if expansion.items:
-        current_user._expand = expansion
-    current_user.refresh()
+class MeView(StormpathView):
+    """
+    Get a JSON object with the current user information.
 
-    return make_stormpath_response(current_user.to_json())
+    .. note::
+        We'll override the default StormpathView logic, since we don't need
+        json support or form and api request validation.
+    """
+    decorators = [login_required]
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def dispatch_request(self):
+        expansion = Expansion()
+        for attr, flag in current_app.config['stormpath']['web']['me'][
+                'expand'].items():
+            if flag:
+                expansion.add_property(attr)
+        if expansion.items:
+            current_user._expand = expansion
+        current_user.refresh()
+
+        return self.make_stormpath_response(current_user.to_json())
