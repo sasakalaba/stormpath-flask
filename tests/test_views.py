@@ -982,3 +982,58 @@ class TestMe(StormpathViewTestCase):
             self.assertEqual(resp.status_code, 302)
             location = resp.headers.get('location')
             self.assertTrue(redirect_url in location)
+
+    def test_added_expansion(self):
+        # NOTE: We're not testing expansion in models since we need to call
+        # the expanded me view.
+
+        # Enable expanded info on our me view
+        me_expand = self.app.config['stormpath']['web']['me']['expand']
+        for key in me_expand.keys():
+            me_expand[key] = True
+
+        with self.app.test_client() as c:
+            email = 'r@rdegges.com'
+            password = 'woot1LoveCookies!'
+
+            # Authenticate our user.
+            resp = c.post('/login', data={
+                'login': email,
+                'password': password,
+            })
+            resp = c.get('/me')
+            self.assertEqual(resp.status_code, 200)
+
+            # Get unexpanded account object
+            account = User.from_login(email, password)
+
+            json_data = {'account': {
+                'href': account.href,
+                'modified_at': account.modified_at.isoformat(),
+                'created_at': account.created_at.isoformat(),
+                'email': 'r@rdegges.com',
+                'full_name': 'Randall Degges',
+                'given_name': 'Randall',
+                'middle_name': None,
+                'status': 'ENABLED',
+                'surname': 'Degges',
+                'username': 'randalldeg'
+            }}
+
+            # Ensure that the missing expanded info won't break
+            # User.to_json() flow.
+            self.assertEqual(json.loads(account.to_json()), json_data)
+
+            json_data['account'].update({
+                'applications': {},
+                'customData': {},
+                'directory': {},
+                'tenant': {},
+                'providerData': {},
+                'groupMemberships': {},
+                'groups': {},
+                'apiKeys': {}
+            })
+
+            # Ensure that expanded me response will return proper data.
+            self.assertEqual(json.loads(resp.data), json_data)

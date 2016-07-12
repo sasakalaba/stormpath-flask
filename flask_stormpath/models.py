@@ -73,7 +73,7 @@ class User(Account):
         return return_value
 
     def to_json(self):
-        writable_attrs = (
+        attrs = (
             'href',
             'modified_at',
             'created_at',
@@ -87,10 +87,14 @@ class User(Account):
         )
 
         json_data = {'account': {}}
-        for key in writable_attrs:
+        for key in attrs:
             attr = getattr(self, key, None)
             json_data['account'][key] = (
                 attr if not isinstance(attr, datetime) else attr.isoformat())
+
+        # In case me view was called with expanded options enabled.
+        if hasattr(self._expand, 'items'):
+            json_data['account'].update(self._expand.items)
         return json.dumps(json_data)
 
     @classmethod
