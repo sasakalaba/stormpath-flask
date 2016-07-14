@@ -49,6 +49,18 @@ class StormpathTestCase(TestCase):
         self.app = bootstrap_flask_app(self.application)
         self.manager = StormpathManager(self.app)
 
+        # html and json header settings
+        self.html_header = 'text/html'
+        self.json_header = 'application/json'
+
+        # Remember default wsgi_app instance for dynamically changing request
+        # type later in tests.
+        self.default_wsgi_app = self.app.wsgi_app
+
+        # Make sure our requests don't trigger a json response.
+        self.app.wsgi_app = HttpAcceptWrapper(
+            self.default_wsgi_app, self.html_header)
+
     def tearDown(self):
         """Destroy all provisioned Stormpath resources."""
         # Clean up the application.

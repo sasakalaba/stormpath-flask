@@ -5,27 +5,17 @@ from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import StormpathView
-from flask import session, url_for
+from flask import session, url_for, current_app
 from flask.ext.login import current_user
+from werkzeug.exceptions import HTTPException
 import json
 
 
 class StormpathViewTestCase(StormpathTestCase):
     """Base test class for Stormpath views."""
+
     def setUp(self):
         super(StormpathViewTestCase, self).setUp()
-
-        # html and json header settings
-        self.html_header = 'text/html,application/xhtml+xml,application/xml;'
-        self.json_header = 'application/json'
-
-        # Remember default wsgi_app instance for dynamically changing request
-        # type later in tests.
-        self.default_wsgi_app = self.app.wsgi_app
-
-        # Make sure our requests don't trigger a json response.
-        self.app.wsgi_app = HttpAcceptWrapper(
-            self.default_wsgi_app, self.html_header)
 
         # Create a user.
         with self.app.app_context():
@@ -120,30 +110,34 @@ class StormpathViewTestCase(StormpathTestCase):
 
 class TestHelperMethods(StormpathViewTestCase):
     """Test our helper functions."""
+
+    def setUp(self):
+        super(TestHelperMethods, self).setUp()
+        with self.app.app_context():
+            with current_app.test_request_context():
+                self.view = StormpathView({})
+
     def test_request_wants_json(self):
-        view = StormpathView({})
-        with self.app.test_client() as c:
-            # Ensure that request_wants_json returns False if 'text/html'
-            # accept header is present.
-            c.get('/')
-            self.assertFalse(view.request_wants_json())
+        # Ensure that request_wants_json returns False if 'application/json'
+        # accept header isn't present.
+        self.view.accept_header = 'text/html'
+        self.assertFalse(self.view.request_wants_json())
 
-            # Add an 'text/html' accept header
-            self.app.wsgi_app = HttpAcceptWrapper(
-                self.default_wsgi_app, self.json_header)
+        self.view.accept_header = None
+        self.assertFalse(self.view.request_wants_json())
 
-            # Ensure that request_wants_json returns True if 'text/html'
-            # accept header is missing.
-            c.get('/')
-            self.assertTrue(view.request_wants_json())
+        self.view.accept_header = 'foo/bar'
+        self.assertFalse(self.view.request_wants_json())
+
+        self.view.accept_header = 'application/json'
+        self.assertTrue(self.view.request_wants_json())
 
     def test_make_stormpath_response(self):
         data = {'foo': 'bar'}
-        view = StormpathView({})
         with self.app.test_client() as c:
             # Ensure that stormpath_response is json if request wants json.
             c.get('/')
-            resp = view.make_stormpath_response(json.dumps(data))
+            resp = self.view.make_stormpath_response(json.dumps(data))
             self.assertFalse(self.check_header(
                 'text/html', resp.headers[0]))
             self.assertTrue(self.check_header(
@@ -152,9 +146,51 @@ class TestHelperMethods(StormpathViewTestCase):
 
             # Ensure that stormpath_response is html if request wants html.
             c.get('/')
-            resp = view.make_stormpath_response(
+            resp = self.view.make_stormpath_response(
                 data, template='flask_stormpath/base.html', return_json=False)
             self.assertTrue(isinstance(resp, unicode))
+
+    def test_validate_request(self):
+        # Ensure that an invalid accept header type will return a 406.
+        self.view.accept_header = 'text/html'
+        self.view.validate_request()
+
+        self.view.accept_header = 'application/json'
+        self.view.validate_request()
+
+        self.view.accept_header = 'foo/bar'
+        with self.assertRaises(HTTPException) as http_error:
+            self.view.validate_request()
+            self.assertEqual(http_error.exception.code, 406)
+
+    def test_accept_header(self):
+        # Ensure that StormpathView.accept_header is properly set.
+        with self.app.test_client() as c:
+            # Create a request with html accept header
+            c.get('/')
+
+            with self.app.app_context():
+                view = StormpathView({})
+                self.assertEqual(view.accept_header, 'text/html')
+
+            # Create a request with json accept header
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, self.json_header)
+            c.get('/')
+
+            with self.app.app_context():
+                view = StormpathView({})
+                self.assertEqual(view.accept_header, 'application/json')
+
+            # Create a request with an accept header not supported by
+            # flask_stormpath.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, 'text/plain')
+            c.get('/')
+
+            with self.app.app_context():
+                view = StormpathView({})
+                self.assertEqual(view.accept_header, None)
 
 
 class TestRegister(StormpathViewTestCase):

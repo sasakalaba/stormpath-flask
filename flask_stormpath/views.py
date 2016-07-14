@@ -234,6 +234,9 @@ class StormpathView(View):
         self.form = (
             StormpathForm.specialize_form(config['form'])()
             if config else None)
+        self.allowed_types = current_app.config['stormpath']['web']['produces']
+        self.accept_header = request.accept_mimetypes.best_match(
+            self.allowed_types)
 
     def make_stormpath_response(
             self, data, template=None, return_json=True, status_code=200):
@@ -246,12 +249,13 @@ class StormpathView(View):
         return stormpath_response
 
     def request_wants_json(self):
-        """ Check if request wants json or html. """
-        best = request.accept_mimetypes.best_match(current_app.config[
-            'stormpath']['web']['produces'])
-        if best is None and current_app.config['stormpath']['web']['produces']:
-            best = current_app.config['stormpath']['web']['produces'][0]
-        return best == 'application/json'
+        """ Check if request wants json. """
+        return self.accept_header == 'application/json'
+
+    def validate_request(self):
+        """ If the request type is not html or json, return 406. """
+        if self.accept_header not in self.allowed_types:
+            abort(406)
 
     def process_request(self):
         """ Custom logic specialized for each view. Must be implemented in
@@ -272,6 +276,10 @@ class StormpathView(View):
 
     def dispatch_request(self):
         """ Basic view skeleton. """
+
+        # Ensure the request is either html or json.
+        self.validate_request()
+
         if request.method == 'POST':
             # If we received a POST request with valid information, we'll
             # continue processing.
@@ -507,9 +515,13 @@ class LogoutView(StormpathView):
     """
 
     def __init__(self, *args, **kwargs):
-        self.config = current_app.config['stormpath']['web']['logout']
-        self.form = StormpathForm.specialize_form(
-            current_app.config['stormpath']['web']['login']['form'])()
+        config = current_app.config['stormpath']['web']['logout'].copy()
+
+        # We'll pass login form here since logout needs the form for the json
+        # response. (Successful logout redirects to login view.)
+        config['form'] = current_app.config['stormpath']['web']['login'][
+            'form']
+        super(LogoutView, self).__init__(config, *args, **kwargs)
 
     def dispatch_request(self):
         logout_user()
