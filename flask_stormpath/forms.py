@@ -86,12 +86,3 @@ class StormpathForm(Form):
     @property
     def json(self):
         return json.dumps(self._json)
-
-
-class VerificationForm(Form):
-    """
-    Verify a user's email.
-
-    This class is used to Verify a user's email address
-    """
-    email = StringField('Email', validators=[InputRequired()])
