@@ -29,107 +29,6 @@ else:
     FACEBOOK = True
 
 
-def facebook_login():
-    """
-    Handle Facebook login.
-
-    When a user logs in with Facebook, all of the authentication happens on the
-    client side with Javascript.  Since all authentication happens with
-    Javascript, we *need* to force a newly created and / or logged in Facebook
-    user to redirect to this view.
-
-    What this view does is:
-
-        - Read the user's session using the Facebook SDK, extracting the user's
-          Facebook access token.
-        - Once we have the user's access token, we send it to Stormpath, so
-          that we can either create (or update) the user on Stormpath's side.
-        - Then we retrieve the Stormpath account object for the user, and log
-          them in using our normal session support (powered by Flask-Login).
-
-    Although this is slighly complicated, this gives us the power to then treat
-    Facebook users like any other normal Stormpath user -- we can assert group
-    permissions, authentication, etc.
-
-    The location this view redirects users to can be configured via
-    Flask-Stormpath settings.
-    """
-    if not FACEBOOK:
-        raise StormpathError({
-            'developerMessage': 'Facebook does not support python 3'
-        })
-    # First, we'll try to grab the Facebook user's data by accessing their
-    # session data.
-    facebook_user = get_user_from_cookie(
-        request.cookies,
-        current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
-        current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
-    )
-
-    # Now, we'll try to have Stormpath either create or update this user's
-    # Stormpath account, by automatically handling the Facebook Graph API stuff
-    # for us.
-    try:
-        account = User.from_facebook(facebook_user['access_token'])
-    except StormpathError as err:
-        social_directory_exists = False
-
-        # If we failed here, it usually means that this application doesn't
-        # have a Facebook directory -- so we'll create one!
-        for asm in (
-                current_app.stormpath_manager.application.
-                account_store_mappings):
-
-            # If there is a Facebook directory, we know this isn't the problem.
-            if (
-                getattr(asm.account_store, 'provider') and
-                asm.account_store.provider.provider_id == Provider.FACEBOOK
-            ):
-                social_directory_exists = True
-                break
-
-        # If there is a Facebook directory already, we'll just pass on the
-        # exception we got.
-        if social_directory_exists:
-            raise err
-
-        # Otherwise, we'll try to create a Facebook directory on the user's
-        # behalf (magic!).
-        dir = current_app.stormpath_manager.client.directories.create({
-            'name': (
-                current_app.stormpath_manager.application.name + '-facebook'),
-            'provider': {
-                'client_id': current_app.config['STORMPATH_SOCIAL'][
-                    'FACEBOOK']['app_id'],
-                'client_secret': current_app.config['STORMPATH_SOCIAL'][
-                    'FACEBOOK']['app_secret'],
-                'provider_id': Provider.FACEBOOK,
-            },
-        })
-
-        # Now that we have a Facebook directory, we'll map it to our
-        # application so it is active.
-        asm = (
-            current_app.stormpath_manager.application.account_store_mappings.
-            create({
-                'application': current_app.stormpath_manager.application,
-                'account_store': dir,
-                'list_index': 99,
-                'is_default_account_store': False,
-                'is_default_group_store': False,
-            }))
-
-        # Lastly, let's retry the Facebook login one more time.
-        account = User.from_facebook(facebook_user['access_token'])
-
-    # Now we'll log the new user into their account.  From this point on, this
-    # Facebook user will be treated exactly like a normal Stormpath user!
-    login_user(account, remember=True)
-
-    return redirect(request.args.get('next') or
-                    current_app.config['stormpath']['web']['login']['nextUri'])
-
-
 def google_login():
     """
     Handle Google login.
@@ -556,3 +455,212 @@ class MeView(StormpathView):
         current_user.refresh()
 
         return self.make_stormpath_response(current_user.to_json())
+
+
+""" Social views. """
+
+
+class FacebookLoginView(StormpathView):
+    """
+    Handle Facebook login.
+
+    When a user logs in with Facebook, all of the authentication happens on the
+    client side with Javascript.  Since all authentication happens with
+    Javascript, we *need* to force a newly created and / or logged in Facebook
+    user to redirect to this view.
+
+    What this view does is:
+
+        - Read the user's session using the Facebook SDK, extracting the user's
+          Facebook access token.
+        - Once we have the user's access token, we send it to Stormpath, so
+          that we can either create (or update) the user on Stormpath's side.
+        - Then we retrieve the Stormpath account object for the user, and log
+          them in using our normal session support (powered by Flask-Login).
+
+    Although this is slighly complicated, this gives us the power to then treat
+    Facebook users like any other normal Stormpath user -- we can assert group
+    permissions, authentication, etc.
+
+    The location this view redirects users to can be configured via
+    Flask-Stormpath settings.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(FacebookLoginView, self).__init__({})
+
+    def dispatch_request(self):
+        if not FACEBOOK:
+            raise StormpathError({
+                'developerMessage': 'Facebook does not support python 3'
+            })
+        # First, we'll try to grab the Facebook user's data by accessing their
+        # session data.
+        facebook_user = get_user_from_cookie(
+            request.cookies,
+            current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
+            current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
+        )
+
+        # Now, we'll try to have Stormpath either create or update this user's
+        # Stormpath account, by automatically handling the Facebook Graph API
+        # stuff for us.
+        try:
+            account = User.from_facebook(facebook_user.get('access_token'))
+        except StormpathError as err:
+            social_directory_exists = False
+
+            # If we failed here, it usually means that this application doesn't
+            # have a Facebook directory -- so we'll create one!
+            for asm in (
+                    current_app.stormpath_manager.application.
+                    account_store_mappings):
+
+                # If there is a Facebook directory, we know this isn't the
+                # problem.
+                if (
+                    getattr(asm.account_store, 'provider') and
+                    asm.account_store.provider.provider_id == Provider.FACEBOOK
+                ):
+                    social_directory_exists = True
+                    break
+
+            # If there is a Facebook directory already, we'll just pass on the
+            # exception we got.
+            if social_directory_exists:
+                raise err
+
+            # Otherwise, we'll try to create a Facebook directory on the user's
+            # behalf (magic!).
+            dir = current_app.stormpath_manager.client.directories.create({
+                'name': (
+                    current_app.stormpath_manager.application.name +
+                    '-facebook'),
+                'provider': {
+                    'client_id': current_app.config['STORMPATH_SOCIAL'][
+                        'FACEBOOK']['app_id'],
+                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
+                        'FACEBOOK']['app_secret'],
+                    'provider_id': Provider.FACEBOOK,
+                },
+            })
+
+            # Now that we have a Facebook directory, we'll map it to our
+            # application so it is active.
+            asm = (
+                current_app.stormpath_manager.application.
+                account_store_mappings.create({
+                    'application': current_app.stormpath_manager.application,
+                    'account_store': dir,
+                    'list_index': 99,
+                    'is_default_account_store': False,
+                    'is_default_group_store': False,
+                }))
+
+            # Lastly, let's retry the Facebook login one more time.
+            account = User.from_facebook(facebook_user['access_token'])
+
+        # Now we'll log the new user into their account.  From this point on,
+        # this Facebook user will be treated exactly like a normal Stormpath
+        # user!
+        login_user(account, remember=True)
+
+        return redirect(
+            request.args.get('next') or
+            current_app.config['stormpath']['web']['login']['nextUri'])
+
+
+class GoogleLoginView(StormpathView):
+    """
+    Handle Google login.
+
+    When a user logs in with Google (using Javascript), Google will redirect
+    the user to this view, along with an access code for the user.
+
+    What we do here is grab this access code and send it to Stormpath to handle
+    the OAuth negotiation.  Once this is done, we log this user in using normal
+    sessions, and from this point on -- this user is treated like a normal
+    system user!
+
+    The location this view redirects users to can be configured via
+    Flask-Stormpath settings.
+    """
+    def __init__(self, *args, **kwargs):
+        super(GoogleLoginView, self).__init__({})
+
+    def dispatch_request(self):
+        # First, we'll try to grab the 'code' query string that Google should
+        # be passing to us.  If this doesn't exist, we'll abort with a
+        # 400 BAD REQUEST (since something horrible must have happened).
+        code = request.args.get('code')
+        if not code:
+            abort(400)
+
+        # Next, we'll try to have Stormpath either create or update this user's
+        # Stormpath account, by automatically handling the Google API stuff
+        # for us.
+        try:
+            account = User.from_google(code)
+        except StormpathError as err:
+            social_directory_exists = False
+
+            # If we failed here, it usually means that this application doesn't
+            # have a Google directory -- so we'll create one!
+            for asm in (
+                    current_app.stormpath_manager.application.
+                    account_store_mappings):
+
+                # If there is a Google directory, we know this isn't the
+                # problem.
+                if (
+                    getattr(asm.account_store, 'provider') and
+                    asm.account_store.provider.provider_id == Provider.GOOGLE
+                ):
+                    social_directory_exists = True
+                    break
+
+            # If there is a Google directory already, we'll just pass on the
+            # exception we got.
+            if social_directory_exists:
+                raise err
+
+            # Otherwise, we'll try to create a Google directory on the user's
+            # behalf (magic!).
+            dir = current_app.stormpath_manager.client.directories.create({
+                'name': (
+                    current_app.stormpath_manager.application.name +
+                    '-google'),
+                'provider': {
+                    'client_id': current_app.config['STORMPATH_SOCIAL'][
+                        'GOOGLE']['client_id'],
+                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
+                        'GOOGLE']['client_secret'],
+                    'redirect_uri': request.url_root[:-1] + current_app.config[
+                        'STORMPATH_GOOGLE_LOGIN_URL'],
+                    'provider_id': Provider.GOOGLE,
+                },
+            })
+
+            # Now that we have a Google directory, we'll map it to our
+            # application so it is active.
+            asm = (
+                current_app.stormpath_manager.application.
+                account_store_mappings.create({
+                    'application': current_app.stormpath_manager.application,
+                    'account_store': dir,
+                    'list_index': 99,
+                    'is_default_account_store': False,
+                    'is_default_group_store': False,
+                }))
+
+            # Lastly, let's retry the Facebook login one more time.
+            account = User.from_google(code)
+
+        # Now we'll log the new user into their account.  From this point on,
+        # this Google user will be treated exactly like a normal Stormpath
+        # user!
+        login_user(account, remember=True)
+
+        return redirect(
+            request.args.get('next') or
+            current_app.config['stormpath']['web']['login']['nextUri'])

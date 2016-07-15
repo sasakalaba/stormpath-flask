@@ -1073,3 +1073,13 @@ class TestMe(StormpathViewTestCase):
 
             # Ensure that expanded me response will return proper data.
             self.assertEqual(json.loads(resp.data), json_data)
+
+
+class TestFacebookLogin(StormpathViewTestCase):
+    def test_reminder(self):
+        self.fail('Implement tests!')
+
+
+class TestGoogleLogin(StormpathViewTestCase):
+    def test_reminder(self):
+        self.fail('Implement tests!')

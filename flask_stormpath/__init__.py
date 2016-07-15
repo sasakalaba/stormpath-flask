@@ -56,14 +56,14 @@ from .models import User
 from .settings import StormpathSettings
 from .errors import ConfigurationError
 from .views import (
-    google_login,
-    facebook_login,
     RegisterView,
     LoginView,
     ForgotView,
     ChangeView,
     LogoutView,
-    MeView
+    MeView,
+    GoogleLoginView,
+    FacebookLoginView
 )
 
 
@@ -420,7 +420,7 @@ class StormpathManager(object):
                 os.path.join(
                     base_path, app.config['STORMPATH_GOOGLE_LOGIN_URL']),
                 'stormpath.google_login',
-                google_login,
+                GoogleLoginView.as_view('google'),
             )
 
         if app.config['STORMPATH_ENABLE_FACEBOOK']:
@@ -428,7 +428,7 @@ class StormpathManager(object):
                 os.path.join(
                     base_path, app.config['STORMPATH_FACEBOOK_LOGIN_URL']),
                 'stormpath.facebook_login',
-                facebook_login,
+                FacebookLoginView.as_view('facebook'),
             )
 
     @property
