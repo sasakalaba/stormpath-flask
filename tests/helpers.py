@@ -148,3 +148,7 @@ def bootstrap_flask_app(app):
     a.config['WTF_CSRF_ENABLED'] = False
 
     return a
+
+
+def get_facebook_access_token():
+    return environ.get('FACEBOOK_ACCESS_TOKEN')

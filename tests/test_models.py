@@ -2,8 +2,9 @@
 
 
 from flask_stormpath.models import User
+from flask_stormpath import StormpathError
 from stormpath.resources.account import Account
-from .helpers import StormpathTestCase
+from .helpers import StormpathTestCase, get_facebook_access_token
 import json
 
 
@@ -19,6 +20,16 @@ class TestUser(StormpathTestCase):
                 password='woot1LoveCookies!',
                 given_name='Randall',
                 surname='Degges')
+
+        # FIXME: this should be stored in environ variables
+        self.app.config['STORMPATH_SOCIAL'] = {
+            'FACEBOOK': {
+                'app_id': '1288946987783393',
+                'app_secret': '095d308ad1b4e9d3cddf80449e8b9779'},
+            'GOOGLE': {
+                'client_id': '',
+                'client_secret': ''}
+        }
 
     def test_subclass(self):
         # Ensure that our lazy construction of the subclass works as
@@ -131,6 +142,9 @@ class TestUser(StormpathTestCase):
                 'modified_at': user.custom_data.modified_at,
             })
 
+    def test_save(self):
+        self.fail('Implementation reminder.')
+
     def test_from_login(self):
         with self.app.app_context():
             # Create a user (we need a new user instance, one with a specific
@@ -161,6 +175,7 @@ class TestUser(StormpathTestCase):
             self.assertEqual(user.href, original_href)
 
     def test_to_json(self):
+        # Ensure that to_json method returns user json representation.
         self.assertTrue(isinstance(self.user.to_json(), str))
         json_data = json.loads(self.user.to_json())
         expected_json_data = {'account': {
@@ -176,3 +191,69 @@ class TestUser(StormpathTestCase):
             'full_name': 'Randall Degges'
         }}
         self.assertEqual(json_data, expected_json_data)
+
+    def test_from_facebook_valid(self):
+        # Ensure that from_facebook will return a User instance if access token
+        # is valid.
+        with self.app.app_context():
+            user = User.from_facebook(get_facebook_access_token())
+            self.assertTrue(isinstance(user, User))
+
+    def test_from_facebook_create_facebook_directory(self):
+        # Ensure that from_facebook will create a Facebook directory if the
+        # access token is valid but a directory doesn't exist.
+        with self.app.app_context():
+            # Ensure that a Facebook directory is not present.
+            facebook_dir_name = (
+                self.app.stormpath_manager.application.name + '-facebook')
+            search_query = (
+                self.app.stormpath_manager.client.tenant.directories.
+                query(name=facebook_dir_name))
+            self.assertEqual(len(search_query.items), 0)
+
+            # Create a directory by creating the user for the first time.
+            user = User.from_facebook(get_facebook_access_token())
+            self.assertTrue(isinstance(user, User))
+
+            # Ensure that the Facebook directory is present the second time we
+            # try go login a user in.
+            search_query = (
+                self.app.stormpath_manager.client.tenant.directories.
+                query(name=facebook_dir_name))
+            self.assertEqual(len(search_query.items), 1)
+            self.assertEqual(search_query.items[0].name, facebook_dir_name)
+
+    def test_from_facebook_invalid_access_token(self):
+        # Ensure that from_facebook will raise a StormpathError if access
+        # token is invalid.
+        with self.app.app_context():
+            with self.assertRaises(StormpathError) as error:
+                User.from_facebook('foobar')
+            self.assertTrue((
+                'Stormpath was not able to complete the request to ' +
+                'Facebook: this can be caused by either a bad Facebook ' +
+                'Directory configuration, or the provided Account ' +
+                'credentials are not valid') in (
+                    error.exception.developer_message['developerMessage']))
+
+    def test_from_facebook_invalid_access_token_with_existing_directory(self):
+        # Ensure that from_facebook will raise a StormpathError if access
+        # token is invalid and Facebook directory present.
+        with self.app.app_context():
+            # First from_facebook call will create a Facebook directory if one
+            # doesn't already exist.
+            user = User.from_facebook(get_facebook_access_token())
+            self.assertTrue(isinstance(user, User))
+
+            # FIXME: ovo treba postaviti u environ varijablu
+            with self.assertRaises(StormpathError) as error:
+                user = User.from_facebook('foobar')
+            self.assertTrue((
+                'Stormpath was not able to complete the request to ' +
+                'Facebook: this can be caused by either a bad Facebook ' +
+                'Directory configuration, or the provided Account ' +
+                'credentials are not valid') in (
+                    error.exception.developer_message['developerMessage']))
+
+    def test_google_social(self):
+        self.fail('Implementation reminder.')

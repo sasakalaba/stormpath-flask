@@ -507,58 +507,15 @@ class FacebookLoginView(StormpathView):
         # stuff for us.
         try:
             account = User.from_facebook(facebook_user.get('access_token'))
-        except StormpathError as err:
-            social_directory_exists = False
-
-            # If we failed here, it usually means that this application doesn't
-            # have a Facebook directory -- so we'll create one!
-            for asm in (
-                    current_app.stormpath_manager.application.
-                    account_store_mappings):
-
-                # If there is a Facebook directory, we know this isn't the
-                # problem.
-                if (
-                    getattr(asm.account_store, 'provider') and
-                    asm.account_store.provider.provider_id == Provider.FACEBOOK
-                ):
-                    social_directory_exists = True
-                    break
-
-            # If there is a Facebook directory already, we'll just pass on the
-            # exception we got.
-            if social_directory_exists:
-                raise err
-
-            # Otherwise, we'll try to create a Facebook directory on the user's
-            # behalf (magic!).
-            dir = current_app.stormpath_manager.client.directories.create({
-                'name': (
-                    current_app.stormpath_manager.application.name +
-                    '-facebook'),
-                'provider': {
-                    'client_id': current_app.config['STORMPATH_SOCIAL'][
-                        'FACEBOOK']['app_id'],
-                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
-                        'FACEBOOK']['app_secret'],
-                    'provider_id': Provider.FACEBOOK,
-                },
-            })
-
-            # Now that we have a Facebook directory, we'll map it to our
-            # application so it is active.
-            asm = (
-                current_app.stormpath_manager.application.
-                account_store_mappings.create({
-                    'application': current_app.stormpath_manager.application,
-                    'account_store': dir,
-                    'list_index': 99,
-                    'is_default_account_store': False,
-                    'is_default_group_store': False,
-                }))
-
-            # Lastly, let's retry the Facebook login one more time.
-            account = User.from_facebook(facebook_user['access_token'])
+        except StormpathError as error:
+            # If an error was raised here that means that it was caused by
+            # either a bad Facebook Directory configuration, or the provided
+            # Account credentials are not valid.
+            flash(error.message.get('message'))
+            redirect_url = current_app.config[
+                'stormpath']['web']['login']['nextUri']
+            redirect_url = redirect_url if redirect_url else '/'
+            return redirect(redirect_url)
 
         # Now we'll log the new user into their account.  From this point on,
         # this Facebook user will be treated exactly like a normal Stormpath
