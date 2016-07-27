@@ -6,29 +6,15 @@ operations.
 """
 
 
-from os import environ, path
+from os import environ
 from unittest import TestCase
 from uuid import uuid4
 
 from flask import Flask
-from flask.ext.stormpath import StormpathManager
+from flask.ext.stormpath import StormpathManager, StormpathError
+from flask_stormpath.models import User
+from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
-
-
-# Make sure you've created a StormpathAccount, generated your apikey
-# properties file, and saved to tests directory
-if path.isfile('tests/apiKey.properties'):
-    with open('tests/apiKey.properties') as f:
-        lines = f.read().splitlines()
-        apikey_properties = {}
-        for line in lines:
-            (key, val) = line.split(' = ')
-            if 'id' in key:
-                environ['STORMPATH_API_KEY_ID'] = val
-            if 'secret' in key:
-                environ['STORMPATH_API_KEY_SECRET'] = val
-else:
-    raise ValueError('First create your api properties file before testing!')
 
 
 class StormpathTestCase(TestCase):
@@ -61,6 +47,16 @@ class StormpathTestCase(TestCase):
         self.app.wsgi_app = HttpAcceptWrapper(
             self.default_wsgi_app, self.html_header)
 
+        # Add secrets and ids for social login stuff.
+        self.app.config['STORMPATH_SOCIAL'] = {
+            'FACEBOOK': {
+                'app_id': environ.get('FACEBOOK_APP_ID'),
+                'app_secret': environ.get('FACEBOOK_APP_SECRET')},
+            'GOOGLE': {
+                'client_id': environ.get('GOOGLE_CLIENT_ID'),
+                'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
+        }
+
     def tearDown(self):
         """Destroy all provisioned Stormpath resources."""
         # Clean up the application.
@@ -92,6 +88,58 @@ class HttpAcceptWrapper(object):
     def __call__(self, environ, start_response):
         environ['HTTP_ACCEPT'] = (self.accept_header)
         return self.app(environ, start_response)
+
+
+class CredentialsValidator(object):
+    """
+    Helper class for validating all the environment variables.
+    """
+
+    def validate_stormpath_settings(self, client):
+        """
+        Ensure that we have proper credentials needed to properly test our
+        Flask-Stormpath integration.
+        """
+        try:
+            # Trying to access a resource that requires an api call
+            # (like a tenant key) without the proper id and secret should
+            # raise an error.
+            client.tenant.key
+        except StormpathError:
+            raise ValueError(
+                'Stormpath api id and secret invalid or missing. Set your ' +
+                'credentials as environment variables before testing.')
+
+    def validate_social_settings(self, app):
+        """
+        Ensure that we have proper credentials needed to properly test our
+        social login stuff.
+        """
+        # FIXME: call this method in your test_models and test_views modules
+
+        # Ensure that Facebook api id and secret are valid:
+        graph_api = GraphAPI()
+        try:
+            graph_api.get_app_access_token(
+                environ.get('FACEBOOK_APP_ID'),
+                environ.get('FACEBOOK_APP_SECRET'))
+        except GraphAPIError:
+            raise ValueError(
+                'Facebook app id and secret invalid or missing. Set your ' +
+                'credentials as environment variables before testing.')
+
+        # Ensure that Facebook access token is valid.
+        with app.app_context():
+            try:
+                User.from_facebook(environ.get('FACEBOOK_ACCESS_TOKEN'))
+            except StormpathError:
+                raise ValueError(
+                    'Facebook access token invalid or missing. Get a test ' +
+                    'user access token from https://developers.facebook.com' +
+                    '/apps/<app_id>/roles/test-users/. Note that this token ' +
+                    'expires in two hours so a new token will be needed ' +
+                    'for each new test run on models and views. Set your ' +
+                    'credentials as environment variables before testing.')
 
 
 def bootstrap_client():
@@ -150,5 +198,7 @@ def bootstrap_flask_app(app):
     return a
 
 
-def get_facebook_access_token():
-    return environ.get('FACEBOOK_ACCESS_TOKEN')
+""" Validation for stormpath api secret and id. """
+
+cred_validator = CredentialsValidator()
+cred_validator.validate_stormpath_settings(bootstrap_client())

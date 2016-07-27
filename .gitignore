@@ -7,4 +7,4 @@ __pycache__
 .cache/
 .coverage
 htmlcov/
-tests/apiKey.properties
+pytest.ini

@@ -240,11 +240,7 @@ class TestCheckSettings(StormpathTestCase):
         self.manager.check_settings(self.app.config)
 
     def test_facebook_settings(self):
-        # Ensure that if the user has Facebook login enabled, they've specified
-        # the correct settings.
         self.app.config['STORMPATH_ENABLE_FACEBOOK'] = True
-        self.assertRaises(
-            ConfigurationError, self.manager.check_settings, self.app.config)
 
         # Ensure that things don't work if not all social configs are
         # specified.

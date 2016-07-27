@@ -4,7 +4,8 @@
 from flask_stormpath.models import User
 from flask_stormpath import StormpathError
 from stormpath.resources.account import Account
-from .helpers import StormpathTestCase, get_facebook_access_token
+from .helpers import StormpathTestCase, CredentialsValidator
+from os import environ
 import json
 
 
@@ -21,15 +22,9 @@ class TestUser(StormpathTestCase):
                 given_name='Randall',
                 surname='Degges')
 
-        # FIXME: this should be stored in environ variables
-        self.app.config['STORMPATH_SOCIAL'] = {
-            'FACEBOOK': {
-                'app_id': '1288946987783393',
-                'app_secret': '095d308ad1b4e9d3cddf80449e8b9779'},
-            'GOOGLE': {
-                'client_id': '',
-                'client_secret': ''}
-        }
+        # Validate our social credentials before running our tests.
+        cred_validator = CredentialsValidator()
+        cred_validator.validate_social_settings(self.app)
 
     def test_subclass(self):
         # Ensure that our lazy construction of the subclass works as
@@ -196,7 +191,7 @@ class TestUser(StormpathTestCase):
         # Ensure that from_facebook will return a User instance if access token
         # is valid.
         with self.app.app_context():
-            user = User.from_facebook(get_facebook_access_token())
+            user = User.from_facebook(environ.get('FACEBOOK_ACCESS_TOKEN'))
             self.assertTrue(isinstance(user, User))
 
     def test_from_facebook_create_facebook_directory(self):
@@ -209,10 +204,11 @@ class TestUser(StormpathTestCase):
             search_query = (
                 self.app.stormpath_manager.client.tenant.directories.
                 query(name=facebook_dir_name))
-            self.assertEqual(len(search_query.items), 0)
+            if search_query.items:
+                search_query.items[0].delete()
 
             # Create a directory by creating the user for the first time.
-            user = User.from_facebook(get_facebook_access_token())
+            user = User.from_facebook(environ.get('FACEBOOK_ACCESS_TOKEN'))
             self.assertTrue(isinstance(user, User))
 
             # Ensure that the Facebook directory is present the second time we
@@ -242,7 +238,7 @@ class TestUser(StormpathTestCase):
         with self.app.app_context():
             # First from_facebook call will create a Facebook directory if one
             # doesn't already exist.
-            user = User.from_facebook(get_facebook_access_token())
+            user = User.from_facebook(environ.get('FACEBOOK_ACCESS_TOKEN'))
             self.assertTrue(isinstance(user, User))
 
             # FIXME: ovo treba postaviti u environ varijablu
