@@ -12,9 +12,10 @@ from uuid import uuid4
 
 from flask import Flask
 from flask.ext.stormpath import StormpathManager, StormpathError
-from flask_stormpath.models import User
 from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
+from oauth2client.client import OAuth2WebServerFlow
+import requests
 
 
 class StormpathTestCase(TestCase):
@@ -59,13 +60,7 @@ class StormpathTestCase(TestCase):
 
     def tearDown(self):
         """Destroy all provisioned Stormpath resources."""
-        # Clean up the application.
-        app_name = self.application.name
-        self.application.delete()
-
-        # Clean up the directories.
-        for directory in self.client.directories.search(app_name):
-            directory.delete()
+        destroy_resources(self.application, self.client)
 
 
 class SignalReceiver(object):
@@ -95,7 +90,7 @@ class CredentialsValidator(object):
     Helper class for validating all the environment variables.
     """
 
-    def validate_stormpath_settings(self, client):
+    def validate_stormpath_credentials(self, client):
         """
         Ensure that we have proper credentials needed to properly test our
         Flask-Stormpath integration.
@@ -110,13 +105,7 @@ class CredentialsValidator(object):
                 'Stormpath api id and secret invalid or missing. Set your ' +
                 'credentials as environment variables before testing.')
 
-    def validate_social_settings(self, app):
-        """
-        Ensure that we have proper credentials needed to properly test our
-        social login stuff.
-        """
-        # FIXME: call this method in your test_models and test_views modules
-
+    def validate_facebook_credentials(self, app):
         # Ensure that Facebook api id and secret are valid:
         graph_api = GraphAPI()
         try:
@@ -128,18 +117,45 @@ class CredentialsValidator(object):
                 'Facebook app id and secret invalid or missing. Set your ' +
                 'credentials as environment variables before testing.')
 
-        # Ensure that Facebook access token is valid.
-        with app.app_context():
-            try:
-                User.from_facebook(environ.get('FACEBOOK_ACCESS_TOKEN'))
-            except StormpathError:
-                raise ValueError(
-                    'Facebook access token invalid or missing. Get a test ' +
-                    'user access token from https://developers.facebook.com' +
-                    '/apps/<app_id>/roles/test-users/. Note that this token ' +
-                    'expires in two hours so a new token will be needed ' +
-                    'for each new test run on models and views. Set your ' +
-                    'credentials as environment variables before testing.')
+    def validate_google_credentials(self, app):
+        root_url = environ.get('ROOT_URL')
+        port = environ.get('PORT')
+
+        # Ensure that our url parameters are present
+        if not root_url or not port:
+            raise ValueError(
+                'Root url and port invalid or missing. Set your ' +
+                'values as environment variables before testing.')
+        redirect_uri = ''.join((root_url, ':', port, '/google'))
+
+        # Ensure that Google api id and secret are valid:
+        flow = OAuth2WebServerFlow(
+            client_id=environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=environ.get('GOOGLE_CLIENT_SECRET'),
+            scope=(
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/userinfo.profile'),
+            redirect_uri=redirect_uri)
+        url = flow.step1_get_authorize_url()
+
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            raise ValueError(
+                'Google client id and secret invalid or missing. Set your ' +
+                'credentials as environment variables before testing.')
+
+    def validate_credentials(self, app, flask_app, client):
+        """
+        Ensure that we have proper credentials needed to properly test our
+        social login stuff.
+        """
+        try:
+            self.validate_stormpath_credentials(client)
+            self.validate_facebook_credentials(flask_app)
+            self.validate_google_credentials(flask_app)
+        except ValueError as error:
+            destroy_resources(app, client)
+            raise error
 
 
 def bootstrap_client():
@@ -198,7 +214,27 @@ def bootstrap_flask_app(app):
     return a
 
 
-""" Validation for stormpath api secret and id. """
+def destroy_resources(app, client):
+    """Destroy all provisioned Stormpath resources."""
+    # Clean up the application.
+    app_name = app.name
+    app.delete()
 
+    # Clean up the directories.
+    for directory in client.directories.search(app_name):
+        directory.delete()
+
+
+""" Stormpath and social login credentials validation. """
+
+# Create resources needed for validation.
+client = bootstrap_client()
+app = bootstrap_app(client)
+flask_app = bootstrap_flask_app(app)
+
+# Validate credentials.
 cred_validator = CredentialsValidator()
-cred_validator.validate_stormpath_settings(bootstrap_client())
+cred_validator.validate_credentials(app, flask_app, client)
+
+# Destroy resources.
+destroy_resources(app, client)

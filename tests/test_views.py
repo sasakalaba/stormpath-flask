@@ -2,7 +2,7 @@
 
 
 from flask.ext.stormpath.models import User
-from .helpers import StormpathTestCase, HttpAcceptWrapper, CredentialsValidator
+from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import StormpathView
 from flask import session, url_for, current_app
@@ -25,10 +25,6 @@ class StormpathViewTestCase(StormpathTestCase):
                 surname='Degges',
                 email='r@rdegges.com',
                 password='woot1LoveCookies!')
-
-        # Validate our social credentials before running our tests.
-        cred_validator = CredentialsValidator()
-        cred_validator.validate_social_settings(self.app)
 
     def check_header(self, st, headers):
         return any(st in header for header in headers)
