@@ -1,7 +1,7 @@
 """Custom data models."""
 
 
-from flask import current_app
+from flask import current_app, request
 from six import text_type
 
 from blinker import Namespace
@@ -171,12 +171,68 @@ class User(Account):
         If something goes wrong, this will raise an exception -- most likely --
         a `StormpathError` (flask.ext.stormpath.StormpathError).
         """
-        _user = current_app.stormpath_manager.application.get_provider_account(
-            code=code,
-            provider=Provider.GOOGLE,
-        )
-        _user.__class__ = User
+        try:
+            _user = (
+                current_app.stormpath_manager.application.get_provider_account(
+                    code=code, provider=Provider.GOOGLE))
+        except StormpathError as err:
+            social_directory_exists = False
 
+            # If we failed here, it usually means that this application doesn't
+            # have a Google directory -- so we'll create one!
+            for asm in (
+                    current_app.stormpath_manager.application.
+                    account_store_mappings):
+
+                # If there is a Google directory, we know this isn't the
+                # problem.
+                if (
+                    getattr(asm.account_store, 'provider') and
+                    asm.account_store.provider.provider_id == Provider.GOOGLE
+                ):
+                    social_directory_exists = True
+                    break
+
+            # If there is a Google directory already, we'll just pass on the
+            # exception we got.
+            if social_directory_exists:
+                raise err
+
+            # Otherwise, we'll try to create a Google directory on the user's
+            # behalf (magic!).
+            dir = current_app.stormpath_manager.client.directories.create({
+                'name': (
+                    current_app.stormpath_manager.application.name +
+                    '-google'),
+                'provider': {
+                    'client_id': current_app.config['STORMPATH_SOCIAL'][
+                        'GOOGLE']['client_id'],
+                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
+                        'GOOGLE']['client_secret'],
+                    'redirect_uri': request.url_root[:-1] + current_app.config[
+                        'STORMPATH_GOOGLE_LOGIN_URL'],
+                    'provider_id': Provider.GOOGLE,
+                },
+            })
+
+            # Now that we have a Google directory, we'll map it to our
+            # application so it is active.
+            asm = (
+                current_app.stormpath_manager.application.
+                account_store_mappings.create({
+                    'application': current_app.stormpath_manager.application,
+                    'account_store': dir,
+                    'list_index': 99,
+                    'is_default_account_store': False,
+                    'is_default_group_store': False,
+                }))
+
+            # Lastly, let's retry the Facebook login one more time.
+            _user = (
+                current_app.stormpath_manager.application.get_provider_account(
+                    code=code, provider=Provider.GOOGLE))
+
+        _user.__class__ = User
         return _user
 
     @classmethod
@@ -193,8 +249,7 @@ class User(Account):
         try:
             _user = (
                 current_app.stormpath_manager.application.get_provider_account(
-                    access_token=access_token,
-                    provider=Provider.FACEBOOK))
+                    access_token=access_token, provider=Provider.FACEBOOK))
         except StormpathError as err:
             social_directory_exists = False
 
@@ -248,8 +303,7 @@ class User(Account):
             # Lastly, let's retry the Facebook login one more time.
             _user = (
                 current_app.stormpath_manager.application.get_provider_account(
-                    access_token=access_token,
-                    provider=Provider.FACEBOOK))
+                    access_token=access_token, provider=Provider.FACEBOOK))
 
         _user.__class__ = User
         return _user
