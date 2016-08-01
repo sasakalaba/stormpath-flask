@@ -7,21 +7,6 @@ from .helpers import StormpathTestCase
 
 
 class TestUserContextProcessor(StormpathTestCase):
-
-    def setUp(self):
-        """Provision a single user account for testing."""
-        # Call the parent setUp method first -- this will bootstrap our tests.
-        super(TestUserContextProcessor, self).setUp()
-
-        # Create our Stormpath user.
-        with self.app.app_context():
-            self.user = User.create(
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
     def test_raw_works(self):
         with self.app.test_client() as c:
             c.post('/login', data={

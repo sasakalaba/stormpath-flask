@@ -1,7 +1,6 @@
 """Run tests against our custom decorators."""
 
 
-from flask.ext.stormpath import User
 from flask.ext.stormpath.decorators import groups_required
 from .helpers import StormpathTestCase
 
@@ -14,15 +13,6 @@ class TestGroupsRequired(StormpathTestCase):
         super(TestGroupsRequired, self).setUp()
 
         with self.app.app_context():
-
-            # Create our Stormpath user.
-            self.user = User.create(
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
             # Create two groups.
             self.admins = self.application.groups.create({
                 'name': 'admins',

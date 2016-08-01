@@ -23,6 +23,9 @@ class TestSignals(StormpathTestCase):
         signal_receiver = SignalReceiver()
         user_created.connect(signal_receiver.signal_user_receiver_function)
 
+        # Delete the user first, so we can create the same one again.
+        self.user.delete()
+
         # Register new account
         with self.app.test_client() as c:
             resp = c.post('/register', data={
@@ -50,16 +53,6 @@ class TestSignals(StormpathTestCase):
         signal_receiver = SignalReceiver()
         user_logged_in.connect(signal_receiver.signal_user_receiver_function)
 
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                username='rdegges',
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-            )
-
         # Attempt a login using username and password.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
@@ -83,18 +76,8 @@ class TestSignals(StormpathTestCase):
         signal_receiver = SignalReceiver()
         user_updated.connect(signal_receiver.signal_user_receiver_function)
 
-        with self.app.app_context():
-
-            # Ensure all requied fields are properly set.
-            user = User.create(
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-                given_name='Randall',
-                surname='Degges',
-            )
-
-            user.middle_name = 'Clark'
-            user.save()
+        self.user.middle_name = 'Clark'
+        self.user.save()
 
         # Check that signal for user update is received
         self.assertEqual(len(signal_receiver.received_signals), 1)
@@ -111,17 +94,7 @@ class TestSignals(StormpathTestCase):
         signal_receiver = SignalReceiver()
         user_deleted.connect(signal_receiver.signal_user_receiver_function)
 
-        with self.app.app_context():
-
-            # Ensure all requied fields are properly set.
-            user = User.create(
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-                given_name='Randall',
-                surname='Degges',
-            )
-
-            user.delete()
+        self.user.delete()
 
         # Check that signal for user deletion is received
         self.assertEqual(len(signal_receiver.received_signals), 1)

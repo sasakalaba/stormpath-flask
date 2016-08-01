@@ -13,16 +13,6 @@ import json
 
 class TestUser(StormpathTestCase):
     """Our User test suite."""
-    def setUp(self):
-        super(TestUser, self).setUp()
-
-        # Create a user.
-        with self.app.app_context():
-            self.user = User.create(
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-                given_name='Randall',
-                surname='Degges')
 
     def test_subclass(self):
         # Ensure that our lazy construction of the subclass works as
@@ -33,26 +23,26 @@ class TestUser(StormpathTestCase):
         self.assertIsInstance(self.user, User)
 
     def test_repr(self):
-        # Ensure `email` is shown in the output if no `username` is
-        # specified.
-        self.assertTrue(self.user.email in self.user.__repr__())
+        # Ensure `username` is shown in the output if specified.
+        self.assertTrue(self.user.username in self.user.__repr__())
+
+        # Ensure Stormpath `href` is shown in the output.
+        self.assertTrue(self.user.href in self.user.__repr__())
 
         # Delete this user.
         self.user.delete()
 
-        # Ensure `username` is shown in the output if specified.
         with self.app.app_context():
-            user = User.create(
-                username='omgrandall',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
+            self.user = User.create(
                 given_name='Randall',
                 surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
             )
-            self.assertTrue(user.username in user.__repr__())
 
-            # Ensure Stormpath `href` is shown in the output.
-            self.assertTrue(user.href in user.__repr__())
+        # Ensure `email` is shown in the output if no `username` is
+        # specified.
+        self.assertTrue(self.user.email in self.user.__repr__())
 
     def test_get_id(self):
         self.assertEqual(self.user.get_id(), self.user.href)
@@ -88,7 +78,7 @@ class TestUser(StormpathTestCase):
         self.assertEqual(self.user.email, 'r@rdegges.com')
         self.assertEqual(self.user.given_name, 'Randall')
         self.assertEqual(self.user.surname, 'Degges')
-        self.assertEqual(self.user.username, 'r@rdegges.com')
+        self.assertEqual(self.user.username, 'rdegges')
         self.assertEqual(self.user.middle_name, None)
         self.assertEqual(
             dict(self.user.custom_data),
@@ -176,7 +166,7 @@ class TestUser(StormpathTestCase):
             'modified_at': self.user.modified_at.isoformat(),
             'created_at': self.user.created_at.isoformat(),
             'status': 'ENABLED',
-            'username': 'r@rdegges.com',
+            'username': 'rdegges',
             'email': 'r@rdegges.com',
             'given_name': 'Randall',
             'middle_name': None,
@@ -304,14 +294,6 @@ class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):
     def setUp(self):
         super(TestFacebookLogin, self).setUp()
 
-        # Create a user.
-        with self.app.app_context():
-            self.user = User.create(
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-                given_name='Randall',
-                surname='Degges')
-
         # Set a provider
         self.provider = {
             'client_id': environ.get('FACEBOOK_APP_ID'),
@@ -330,13 +312,6 @@ class TestGoogleLogin(StormpathTestCase, SocialMethodsTestMixin):
         super(TestGoogleLogin, self).setUp()
 
         with self.app.app_context():
-            # Create a user.
-            self.user = User.create(
-                email='r@rdegges.com',
-                password='woot1LoveCookies!',
-                given_name='Randall',
-                surname='Degges')
-
             # Set a provider
             self.provider = {
                 'client_id': environ.get('GOOGLE_CLIENT_ID'),

@@ -11,7 +11,7 @@ from unittest import TestCase
 from uuid import uuid4
 
 from flask import Flask
-from flask.ext.stormpath import StormpathManager, StormpathError
+from flask.ext.stormpath import StormpathManager, StormpathError, User
 from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
 from oauth2client.client import OAuth2WebServerFlow
@@ -57,6 +57,16 @@ class StormpathTestCase(TestCase):
                 'client_id': environ.get('GOOGLE_CLIENT_ID'),
                 'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
         }
+
+        # Create a user.
+        with self.app.app_context():
+            self.user = User.create(
+                username='rdegges',
+                given_name='Randall',
+                surname='Degges',
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+            )
 
     def tearDown(self):
         """Destroy all provisioned Stormpath resources."""

@@ -14,18 +14,6 @@ import json
 class StormpathViewTestCase(StormpathTestCase):
     """Base test class for Stormpath views."""
 
-    def setUp(self):
-        super(StormpathViewTestCase, self).setUp()
-
-        # Create a user.
-        with self.app.app_context():
-            User.create(
-                username='randalldeg',
-                given_name='Randall',
-                surname='Degges',
-                email='r@rdegges.com',
-                password='woot1LoveCookies!')
-
     def check_header(self, st, headers):
         return any(st in header for header in headers)
 
@@ -566,7 +554,7 @@ class TestLogin(StormpathViewTestCase):
         # Attempt a login using username and password.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
-                'login': 'randalldeg',
+                'login': 'rdegges',
                 'password': 'woot1LoveCookies!',
             })
             self.assertEqual(resp.status_code, 302)
@@ -576,7 +564,7 @@ class TestLogin(StormpathViewTestCase):
         # specified.
         with self.app.test_client() as c:
             resp = c.post('/login', data={
-                'login': 'randalldeg',
+                'login': 'rdegges',
                 'password': 'hilol',
             })
             self.assertEqual(resp.status_code, 200)
@@ -597,7 +585,7 @@ class TestLogin(StormpathViewTestCase):
         with self.app.test_client() as c:
             # Attempt a login using username and password.
             resp = c.post('/login', data={
-                'login': 'randalldeg',
+                'login': 'rdegges',
                 'password': 'woot1LoveCookies!'
             })
 
@@ -626,7 +614,7 @@ class TestLogin(StormpathViewTestCase):
     def test_json_response_valid_form(self):
         # Specify expected response.
         expected_response = {'account': {
-            'username': 'randalldeg',
+            'username': 'rdegges',
             'email': 'r@rdegges.com',
             'given_name': 'Randall',
             'middle_name': None,
@@ -930,7 +918,7 @@ class TestChange(StormpathViewTestCase):
     def test_json_response_valid_form(self):
         # Specify expected response.
         expected_response = {'account': {
-            'username': 'randalldeg',
+            'username': 'rdegges',
             'email': 'r@rdegges.com',
             'given_name': 'Randall',
             'middle_name': None,
@@ -1053,7 +1041,7 @@ class TestMe(StormpathViewTestCase):
                 'middle_name': None,
                 'status': 'ENABLED',
                 'surname': 'Degges',
-                'username': 'randalldeg'
+                'username': 'rdegges'
             }}
 
             # Ensure that the missing expanded info won't break
