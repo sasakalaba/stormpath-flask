@@ -3,7 +3,6 @@
 
 from flask_stormpath.models import User
 from flask_stormpath import StormpathError
-from flask import request
 from stormpath.resources.account import Account
 from stormpath.resources.provider import Provider
 from .helpers import StormpathTestCase
@@ -186,37 +185,60 @@ class TestUser(StormpathTestCase):
         }}
         self.assertEqual(json_data, expected_json_data)
 
+
+class SocialMethodsTestMixin(object):
+    """Our mixin for testing User social methods."""
+
+    def __init__(self, social_name, *args, **kwargs):
+        # Validate social_name
+        if social_name == 'facebook' or social_name == 'google':
+            self.social_name = social_name
+        else:
+            raise ValueError('Wrong social name.')
+
+    @property
+    def social_dir_name(self):
+        # Get directory name
+        with self.app.app_context():
+            return (
+                self.app.stormpath_manager.application.name + '-' +
+                self.social_name)
+
+    @property
+    def search_query(self):
+        return self.app.stormpath_manager.client.tenant.directories.query(
+            name=self.social_dir_name)
+
+    def from_social(self, access_token):
+        return getattr(
+                User, 'from_%s' % self.social_name)(access_token)
+
     @patch('stormpath.resources.application.Application.get_provider_account')
-    def test_from_facebook_valid(self, user_mock):
+    def test_from_social_valid(self, user_mock):
         # We'll mock the social account getter since we cannot replicate the
-        # access token needed for facebook login.
+        # access token needed for social login.
         user_mock.return_value = self.user
 
-        # Ensure that from_facebook will return a User instance if access token
+        # Ensure that from_<social> will return a User instance if access token
         # is valid.
         with self.app.app_context():
-            user = User.from_facebook('mocked access token')
+            user = self.from_social('mocked access token')
             self.assertTrue(isinstance(user, User))
 
     @patch('stormpath.resources.application.Application.get_provider_account')
-    def test_from_facebook_create_facebook_directory(self, user_mock):
+    def test_from_social_create_directory(self, user_mock):
         # We'll mock the social account getter since we cannot replicate the
-        # access token needed for facebook login.
+        # access token needed for social login.
         user_mock.return_value = self.user
         user_mock.side_effect = StormpathError(
             {'developerMessage': 'Mocked message.'})
 
-        # Ensure that from_facebook will create a Facebook directory if the
+        # Ensure that from_<social> will create a directory if the
         # access token is valid but a directory doesn't exist.
         with self.app.app_context():
-            # Ensure that a Facebook directory is not present.
-            facebook_dir_name = (
-                self.app.stormpath_manager.application.name + '-facebook')
-            search_query = (
-                self.app.stormpath_manager.client.tenant.directories.
-                query(name=facebook_dir_name))
-            if search_query.items:
-                search_query.items[0].delete()
+            # Ensure that a social directory is not present.
+            if self.search_query.items:
+                self.search_query.items[0].delete()
 
             # We have to catch our exception since we're the one raising it
             # with our mocking.
@@ -224,158 +246,104 @@ class TestUser(StormpathTestCase):
                 # Create a directory by creating the user for the first time.
                 with self.app.test_request_context(
                         ':%s' % environ.get('PORT')):
-                    user = User.from_facebook('mocked access token')
+                    user = self.from_social('mocked access token')
                     self.assertTrue(isinstance(user, User))
 
                 # To ensure that this error is caught at the right time
                 # however, we will assert the number of mock calls.
                 self.assertEqual(user_mock.call_count, 2)
 
-            # Ensure that the Facebook directory is now present.
-            search_query = (
-                self.app.stormpath_manager.client.tenant.directories.
-                query(name=facebook_dir_name))
-            self.assertEqual(len(search_query.items), 1)
-            self.assertEqual(search_query.items[0].name, facebook_dir_name)
+            # Ensure that the social directory is now present.
+            self.assertEqual(len(self.search_query.items), 1)
+            self.assertEqual(
+                self.search_query.items[0].name, self.social_dir_name)
 
-    def test_from_facebook_invalid_access_token(self):
-        # Ensure that from_facebook will raise a StormpathError if access
+    def test_from_social_invalid_access_token(self):
+        # Ensure that from_<social> will raise a StormpathError if access
         # token is invalid.
-        with self.app.app_context():
+        with self.app.app_context() and self.app.test_request_context(
+                ':%s' % environ.get('PORT')):
             with self.assertRaises(StormpathError) as error:
-                User.from_facebook('foobar')
+                self.from_social('foobar')
 
             self.assertTrue((
                 'Stormpath was not able to complete the request to ' +
-                'Facebook: this can be caused by either a bad Facebook ' +
+                '{0}: this can be caused by either a bad {0} ' +
                 'Directory configuration, or the provided Account ' +
-                'credentials are not valid') in (
-                    error.exception.developer_message['developerMessage']))
+                'credentials are not valid').format(self.social_name.title())
+                    in (error.exception.developer_message['developerMessage']))
 
-    def test_from_facebook_invalid_access_token_with_existing_directory(self):
-        # First we will create a Facebook directory if one doesn't already
+    def test_from_social_invalid_access_token_with_existing_directory(self):
+        # First we will create a social directory if one doesn't already
         # exist.
-        facebook_dir_name = (
-            self.app.stormpath_manager.application.name + '-facebook')
-        search_query = (
-            self.app.stormpath_manager.client.tenant.directories.
-            query(name=facebook_dir_name))
-
-        with self.app.app_context():
-            if not search_query.items:
+        with self.app.app_context() and self.app.test_request_context(
+                ':%s' % environ.get('PORT')):
+            if not self.search_query.items:
                 self.app.stormpath_manager.client.directories.create({
-                    'name': facebook_dir_name,
-                    'provider': {
-                        'client_id': environ.get('FACEBOOK_APP_ID'),
-                        'client_secret': environ.get('FACEBOOK_APP_SECRET'),
-                        'provider_id': Provider.FACEBOOK,
-                    }
+                    'name': self.social_dir_name,
+                    'provider': self.provider
                 })
 
             # Ensure that from_facebook will raise a StormpathError if access
             # token is invalid and Facebook directory present.
             with self.assertRaises(StormpathError) as error:
-                User.from_facebook('foobar')
+                self.from_social('foobar')
 
             self.assertEqual(
-                'A Directory named \'%s\' already exists.' % facebook_dir_name,
+                'A Directory named \'%s\' already exists.' %
+                self.social_dir_name,
                 error.exception.developer_message['developerMessage'])
 
-    @patch('stormpath.resources.application.Application.get_provider_account')
-    def test_from_google_valid(self, user_mock):
-        # We'll mock the social account getter since we cannot replicate the
-        # access token needed for google login.
-        user_mock.return_value = self.user
 
-        # Ensure that from_google will return a User instance if access token
-        # is valid.
+class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):
+    """Our User facebook login test suite."""
+    def __init__(self, *args, **kwargs):
+        super(TestFacebookLogin, self).__init__(*args, **kwargs)
+        SocialMethodsTestMixin.__init__(self, 'facebook')
+
+    def setUp(self):
+        super(TestFacebookLogin, self).setUp()
+
+        # Create a user.
         with self.app.app_context():
-            user = User.from_google('mocked access token')
-            self.assertTrue(isinstance(user, User))
+            self.user = User.create(
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges')
 
-    @patch('stormpath.resources.application.Application.get_provider_account')
-    def test_from_google_create_google_directory(self, user_mock):
-        # We'll mock the social account getter since we cannot replicate the
-        # access token needed for google login.
-        user_mock.return_value = self.user
-        user_mock.side_effect = StormpathError(
-            {'developerMessage': 'Mocked message.'})
+        # Set a provider
+        self.provider = {
+            'client_id': environ.get('FACEBOOK_APP_ID'),
+            'client_secret': environ.get('FACEBOOK_APP_SECRET'),
+            'provider_id': Provider.FACEBOOK,
+        }
 
-        # Ensure that from_google will create a Google directory if the
-        # access token is valid but a directory doesn't exist.
+
+class TestGoogleLogin(StormpathTestCase, SocialMethodsTestMixin):
+    """Our User google login test suite."""
+    def __init__(self, *args, **kwargs):
+        super(TestGoogleLogin, self).__init__(*args, **kwargs)
+        SocialMethodsTestMixin.__init__(self, 'google')
+
+    def setUp(self):
+        super(TestGoogleLogin, self).setUp()
+
         with self.app.app_context():
-            # Ensure that a Google directory is not present.
-            google_dir_name = (
-                self.app.stormpath_manager.application.name + '-google')
-            search_query = (
-                self.app.stormpath_manager.client.tenant.directories.
-                query(name=google_dir_name))
-            if search_query.items:
-                search_query.items[0].delete()
+            # Create a user.
+            self.user = User.create(
+                email='r@rdegges.com',
+                password='woot1LoveCookies!',
+                given_name='Randall',
+                surname='Degges')
 
-            # We have to catch our exception since we're the one raising it
-            # with our mocking.
-            with self.assertRaises(StormpathError):
-                # Create a directory by creating the user for the first time.
-                with self.app.test_request_context(
-                        ':%s' % environ.get('PORT')):
-                    user = User.from_google('mocked access token')
-                    self.assertTrue(isinstance(user, User))
-
-                # To ensure that this error is caught at the right time
-                # however, we will assert the number of mock calls.
-                self.assertEqual(user_mock.call_count, 2)
-
-            # Ensure that the Google directory is now present.
-            search_query = (
-                self.app.stormpath_manager.client.tenant.directories.
-                query(name=google_dir_name))
-            self.assertEqual(len(search_query.items), 1)
-            self.assertEqual(search_query.items[0].name, google_dir_name)
-
-    def test_from_google_invalid_access_token(self):
-        # Ensure that from_google will raise a StormpathError if access
-        # token is invalid.
-        with self.app.app_context() and self.app.test_request_context(
-                ':%s' % environ.get('PORT')):
-            with self.assertRaises(StormpathError) as error:
-                User.from_google('foobar')
-
-            self.assertTrue((
-                'Stormpath was not able to complete the request to ' +
-                'Google: this can be caused by either a bad ' +
-                'Google Directory configuration, or the provided ' +
-                'Account credentials are not valid') in (
-                    error.exception.developer_message['developerMessage']))
-
-    def test_from_google_invalid_access_token_with_existing_directory(self):
-        # First we will create a Google directory if one doesn't already exist.
-        google_dir_name = (
-            self.app.stormpath_manager.application.name + '-google')
-        search_query = (
-            self.app.stormpath_manager.client.tenant.directories.
-            query(name=google_dir_name))
-
-        with self.app.app_context() and self.app.test_request_context(
-                ':%s' % environ.get('PORT')):
-            if not search_query.items:
-                self.app.stormpath_manager.client.directories.create({
-                    'name': google_dir_name,
-                    'provider': {
-                        'client_id': environ.get('GOOGLE_CLIENT_ID'),
-                        'client_secret': environ.get('GOOGLE_CLIENT_SECRET'),
-                        'redirect_uri': (
-                            request.url_root[:-1] + self.app.config[
-                                'STORMPATH_GOOGLE_LOGIN_URL']),
-                        'provider_id': Provider.GOOGLE,
-                    }
-                })
-
-            # Ensure that from_google will raise a StormpathError if access
-            # token is invalid and Google directory present.
-            with self.assertRaises(StormpathError) as error:
-                User.from_google('foobar')
-
-            self.assertEqual(
-                'A Directory named \'%s\' already exists.' % google_dir_name,
-                error.exception.developer_message['developerMessage'])
+            # Set a provider
+            self.provider = {
+                'client_id': environ.get('GOOGLE_CLIENT_ID'),
+                'client_secret': environ.get('GOOGLE_CLIENT_SECRET'),
+                'redirect_uri': (
+                    ''.join(
+                        (environ.get('ROOT_URL'), ':', environ.get('PORT'))) +
+                    self.app.config['STORMPATH_GOOGLE_LOGIN_URL']),
+                'provider_id': Provider.GOOGLE,
+            }
