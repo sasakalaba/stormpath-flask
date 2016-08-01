@@ -126,7 +126,15 @@ class TestUser(StormpathTestCase):
             })
 
     def test_save(self):
-        self.fail('Implementation reminder.')
+        # Ensure that save will save the new instance.
+        self.assertEqual(self.user.username, 'rdegges')
+        self.user.username = 'something else'
+        self.user.save()
+        self.assertEqual(self.user.username, 'something else')
+
+        # Ensure that save will return a user instance. (Signal sent during
+        # save is tested in test_signals.py)
+        self.assertTrue(isinstance(self.user.save(), User))
 
     def test_from_login(self):
         with self.app.app_context():
@@ -185,6 +193,13 @@ class SocialMethodsTestMixin(object):
             self.social_name = social_name
         else:
             raise ValueError('Wrong social name.')
+
+        # Set our error message
+        self.error_message = (
+            'Stormpath was not able to complete the request to ' +
+            '{0}: this can be caused by either a bad {0} ' +
+            'Directory configuration, or the provided Account ' +
+            'credentials are not valid').format(self.social_name.title())
 
     @property
     def social_dir_name(self):
@@ -256,12 +271,9 @@ class SocialMethodsTestMixin(object):
             with self.assertRaises(StormpathError) as error:
                 self.from_social('foobar')
 
-            self.assertTrue((
-                'Stormpath was not able to complete the request to ' +
-                '{0}: this can be caused by either a bad {0} ' +
-                'Directory configuration, or the provided Account ' +
-                'credentials are not valid').format(self.social_name.title())
-                    in (error.exception.developer_message['developerMessage']))
+            self.assertTrue(
+                self.error_message in error.exception.developer_message[
+                    'developerMessage'])
 
     def test_from_social_invalid_access_token_with_existing_directory(self):
         # First we will create a social directory if one doesn't already
@@ -269,20 +281,33 @@ class SocialMethodsTestMixin(object):
         with self.app.app_context() and self.app.test_request_context(
                 ':%s' % environ.get('PORT')):
             if not self.search_query.items:
-                self.app.stormpath_manager.client.directories.create({
-                    'name': self.social_dir_name,
-                    'provider': self.provider
-                })
+                social_dir = (
+                    self.app.stormpath_manager.client.directories.create({
+                        'name': self.social_dir_name,
+                        'provider': self.provider
+                    })
+                )
 
-            # Ensure that from_facebook will raise a StormpathError if access
-            # token is invalid and Facebook directory present.
+                # Now we'll map the new directory to our application.
+                (
+                    self.app.stormpath_manager.application.
+                    account_store_mappings.create({
+                        'application': self.app.stormpath_manager.application,
+                        'account_store': social_dir,
+                        'list_index': 99,
+                        'is_default_account_store': False,
+                        'is_default_group_store': False,
+                    })
+                )
+
+            # Ensure that from_<social> will raise a StormpathError if access
+            # token is invalid and social directory present.
             with self.assertRaises(StormpathError) as error:
                 self.from_social('foobar')
 
-            self.assertEqual(
-                'A Directory named \'%s\' already exists.' %
-                self.social_dir_name,
-                error.exception.developer_message['developerMessage'])
+            self.assertTrue(
+                self.error_message in error.exception.developer_message[
+                    'developerMessage'])
 
 
 class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):

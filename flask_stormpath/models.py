@@ -60,9 +60,9 @@ class User(Account):
         """
         Send signal after user is updated.
         """
-        return_value = super(User, self).save()
+        super(User, self).save()
         user_updated.send(self, user=dict(self))
-        return return_value
+        return self
 
     def delete(self):
         """
