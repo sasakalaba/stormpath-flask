@@ -214,9 +214,27 @@ class SocialMethodsTestMixin(object):
         return self.app.stormpath_manager.client.tenant.directories.query(
             name=self.social_dir_name)
 
-    def from_social(self, access_token):
+    def user_from_social(self, access_token):
         return getattr(
                 User, 'from_%s' % self.social_name)(access_token)
+
+    @patch('stormpath.resources.application.Application.get_provider_account')
+    def test_from_social_supported_service(self, user_mock):
+        # Ensure that the proper social_name will continue processing the
+        # social login.
+        with self.app.app_context():
+            self.assertTrue(
+                isinstance(self.user.from_social(
+                    self.social_name,
+                    'mocked access token', self.provider), User))
+
+            # Ensure that the wrong social name will raise an error.
+            with self.assertRaises(ValueError) as error:
+                self.user.from_social(
+                    'foobar', 'mocked access token', self.provider)
+
+            self.assertEqual(
+                error.exception.message, 'Social service is not supported.')
 
     @patch('stormpath.resources.application.Application.get_provider_account')
     def test_from_social_valid(self, user_mock):
@@ -226,8 +244,9 @@ class SocialMethodsTestMixin(object):
 
         # Ensure that from_<social> will return a User instance if access token
         # is valid.
-        with self.app.app_context():
-            user = self.from_social('mocked access token')
+        with self.app.app_context() and self.app.test_request_context(
+                ':%s' % environ.get('PORT')):
+            user = self.user_from_social('mocked access token')
             self.assertTrue(isinstance(user, User))
 
     @patch('stormpath.resources.application.Application.get_provider_account')
@@ -251,7 +270,7 @@ class SocialMethodsTestMixin(object):
                 # Create a directory by creating the user for the first time.
                 with self.app.test_request_context(
                         ':%s' % environ.get('PORT')):
-                    user = self.from_social('mocked access token')
+                    user = self.user_from_social('mocked access token')
                     self.assertTrue(isinstance(user, User))
 
                 # To ensure that this error is caught at the right time
@@ -269,7 +288,7 @@ class SocialMethodsTestMixin(object):
         with self.app.app_context() and self.app.test_request_context(
                 ':%s' % environ.get('PORT')):
             with self.assertRaises(StormpathError) as error:
-                self.from_social('foobar')
+                self.user_from_social('foobar')
 
             self.assertTrue(
                 self.error_message in error.exception.developer_message[
@@ -303,7 +322,7 @@ class SocialMethodsTestMixin(object):
             # Ensure that from_<social> will raise a StormpathError if access
             # token is invalid and social directory present.
             with self.assertRaises(StormpathError) as error:
-                self.from_social('foobar')
+                self.user_from_social('foobar')
 
             self.assertTrue(
                 self.error_message in error.exception.developer_message[

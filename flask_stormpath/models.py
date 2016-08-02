@@ -160,62 +160,58 @@ class User(Account):
 
         return _user
 
-    @classmethod
-    def from_google(self, code):
+    @staticmethod
+    def from_social(social_name, access_token, provider):
         """
-        Create a new User class given a Google access code.
-
-        Access codes must be retrieved from Google's OAuth service (Google
-        Login).
-
-        If something goes wrong, this will raise an exception -- most likely --
-        a `StormpathError` (flask.ext.stormpath.StormpathError).
+        Helper method for our social methods.
         """
+
+        kwargs = {'provider': provider.get('provider_id')}
+        if social_name == 'facebook':
+            kwargs['access_token'] = access_token
+        elif social_name == 'google':
+            kwargs['code'] = access_token
+        else:
+            raise ValueError('Social service is not supported.')
+
         try:
             _user = (
-                current_app.stormpath_manager.application.get_provider_account(
-                    code=code, provider=Provider.GOOGLE))
+                current_app.stormpath_manager.
+                application.get_provider_account(**kwargs))
         except StormpathError as err:
             social_directory_exists = False
 
             # If we failed here, it usually means that this application doesn't
-            # have a Google directory -- so we'll create one!
+            # have a social directory -- so we'll create one!
             for asm in (
                     current_app.stormpath_manager.application.
                     account_store_mappings):
 
-                # If there is a Google directory, we know this isn't the
+                # If there is a social directory, we know this isn't the
                 # problem.
                 if (
                     getattr(asm.account_store, 'provider') and
-                    asm.account_store.provider.provider_id == Provider.GOOGLE
+                    asm.account_store.provider.provider_id == provider.get(
+                        'provider_id')
                 ):
                     social_directory_exists = True
                     break
 
-            # If there is a Google directory already, we'll just pass on the
+            # If there is a social directory already, we'll just pass on the
             # exception we got.
             if social_directory_exists:
                 raise err
 
-            # Otherwise, we'll try to create a Google directory on the user's
+            # Otherwise, we'll try to create a social directory on the user's
             # behalf (magic!).
             dir = current_app.stormpath_manager.client.directories.create({
                 'name': (
                     current_app.stormpath_manager.application.name +
-                    '-google'),
-                'provider': {
-                    'client_id': current_app.config['STORMPATH_SOCIAL'][
-                        'GOOGLE']['client_id'],
-                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
-                        'GOOGLE']['client_secret'],
-                    'redirect_uri': request.url_root[:-1] + current_app.config[
-                        'STORMPATH_GOOGLE_LOGIN_URL'],
-                    'provider_id': Provider.GOOGLE,
-                },
+                    '-' + social_name),
+                'provider': provider
             })
 
-            # Now that we have a Google directory, we'll map it to our
+            # Now that we have a social directory, we'll map it to our
             # application so it is active.
             asm = (
                 current_app.stormpath_manager.application.
@@ -227,13 +223,35 @@ class User(Account):
                     'is_default_group_store': False,
                 }))
 
-            # Lastly, let's retry the Facebook login one more time.
+            # Lastly, let's retry the social login one more time.
             _user = (
-                current_app.stormpath_manager.application.get_provider_account(
-                    code=code, provider=Provider.GOOGLE))
+                current_app.stormpath_manager.
+                application.get_provider_account(**kwargs))
 
         _user.__class__ = User
         return _user
+
+    @classmethod
+    def from_google(self, code):
+        """
+        Create a new User class given a Google access code.
+
+        Access codes must be retrieved from Google's OAuth service (Google
+        Login).
+
+        If something goes wrong, this will raise an exception -- most likely --
+        a `StormpathError` (flask.ext.stormpath.StormpathError).
+        """
+        provider = {
+            'client_id': current_app.config[
+                'STORMPATH_SOCIAL']['GOOGLE']['client_id'],
+            'client_secret': current_app.config[
+                'STORMPATH_SOCIAL']['GOOGLE']['client_secret'],
+            'redirect_uri': request.url_root[:-1] + current_app.config[
+                'STORMPATH_GOOGLE_LOGIN_URL'],
+            'provider_id': Provider.GOOGLE,
+        }
+        return self.from_social('google', code, provider)
 
     @classmethod
     def from_facebook(self, access_token):
@@ -246,64 +264,11 @@ class User(Account):
         If something goes wrong, this will raise an exception -- most likely --
         a `StormpathError` (flask.ext.stormpath.StormpathError).
         """
-        try:
-            _user = (
-                current_app.stormpath_manager.application.get_provider_account(
-                    access_token=access_token, provider=Provider.FACEBOOK))
-        except StormpathError as err:
-            social_directory_exists = False
-
-            # If we failed here, it usually means that this application doesn't
-            # have a Facebook directory -- so we'll create one!
-            for asm in (
-                    current_app.stormpath_manager.application.
-                    account_store_mappings):
-
-                # If there is a Facebook directory, we know this isn't the
-                # problem.
-                if (
-                    getattr(asm.account_store, 'provider') and
-                    asm.account_store.provider.provider_id == Provider.FACEBOOK
-                ):
-                    social_directory_exists = True
-                    break
-
-            # If there is a Facebook directory already, we'll just pass on the
-            # exception we got.
-            if social_directory_exists:
-                raise err
-
-            # Otherwise, we'll try to create a Facebook directory on the user's
-            # behalf (magic!).
-            dir = current_app.stormpath_manager.client.directories.create({
-                'name': (
-                    current_app.stormpath_manager.application.name +
-                    '-facebook'),
-                'provider': {
-                    'client_id': current_app.config['STORMPATH_SOCIAL'][
-                        'FACEBOOK']['app_id'],
-                    'client_secret': current_app.config['STORMPATH_SOCIAL'][
-                        'FACEBOOK']['app_secret'],
-                    'provider_id': Provider.FACEBOOK,
-                },
-            })
-
-            # Now that we have a Facebook directory, we'll map it to our
-            # application so it is active.
-            asm = (
-                current_app.stormpath_manager.application.
-                account_store_mappings.create({
-                    'application': current_app.stormpath_manager.application,
-                    'account_store': dir,
-                    'list_index': 99,
-                    'is_default_account_store': False,
-                    'is_default_group_store': False,
-                }))
-
-            # Lastly, let's retry the Facebook login one more time.
-            _user = (
-                current_app.stormpath_manager.application.get_provider_account(
-                    access_token=access_token, provider=Provider.FACEBOOK))
-
-        _user.__class__ = User
-        return _user
+        provider = {
+            'client_id': current_app.config[
+                'STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
+            'client_secret': current_app.config[
+                'STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
+            'provider_id': Provider.FACEBOOK,
+        }
+        return self.from_social('facebook', access_token, provider)
