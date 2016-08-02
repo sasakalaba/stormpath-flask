@@ -1063,11 +1063,39 @@ class TestMe(StormpathViewTestCase):
             self.assertEqual(json.loads(resp.data), json_data)
 
 
+class SocialViewsTestMixin(object):
+    """Our mixin for testing social views."""
+
+    def __init__(self, social_name, *args, **kwargs):
+        # Validate social_name
+        if social_name == 'facebook' or social_name == 'google':
+            self.social_name = social_name
+        else:
+            raise ValueError('Wrong social name.')
+
+    def test_access_token(self):
+        self.fail('Implement tests!')
+
+    def test_user_logged_in_and_redirect(self):
+        self.fail('Implement tests!')
+
+    def test_error_retrieving_access_token(self):
+        self.fail('Implement tests!')
+
+    def test_error_retrieving_user(self):
+        self.fail('Implement tests!')
+
+
 class TestFacebookLogin(StormpathViewTestCase):
+    """ Test our Facebook login view. """
     def test_reminder(self):
+        self.fail('Implement tests!')
+
+    def test_python3_support(self):
         self.fail('Implement tests!')
 
 
 class TestGoogleLogin(StormpathViewTestCase):
+    """ Test our Google login view. """
     def test_reminder(self):
         self.fail('Implement tests!')
