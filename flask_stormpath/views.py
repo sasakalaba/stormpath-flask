@@ -374,7 +374,49 @@ class MeView(StormpathView):
 """ Social views. """
 
 
-class FacebookLoginView(StormpathView):
+class SocialView(StormpathView):
+    """ Parent class for social login views. """
+    def __init__(self, *args, **kwargs):
+        # First validate social view call
+        self.social_name = kwargs.pop('social_name')
+        if self.social_name != 'facebook' and self.social_name != 'google':
+            raise ValueError('Social service is not supported.')
+
+        # Then set the access token and the provider
+        self.access_token = kwargs.pop('access_token')
+        self.provider_social = getattr(Provider, self.social_name.upper())
+
+        super(SocialView, self).__init__({})
+
+    def get_account(self):
+        return getattr(
+            User, 'from_%s' % self.social_name)(self.access_token)
+
+    def dispatch_request(self):
+        """ Basic social view skeleton. """
+        # We'll try to have Stormpath either create or update this user's
+        # Stormpath account, by automatically handling the social API stuff
+        # for us.
+        try:
+            account = self.get_account()
+        except StormpathError as error:
+            flash(error.message.get('message'))
+            redirect_url = current_app.config[
+                'stormpath']['web']['login']['uri']
+            redirect_url = redirect_url if redirect_url else '/'
+            return redirect(redirect_url)
+
+        # Now we'll log the new user into their account.  From this point on,
+        # this social user will be treated exactly like a normal Stormpath
+        # user!
+        login_user(account, remember=True)
+
+        return redirect(
+            request.args.get('next') or
+            current_app.config['stormpath']['web']['login']['nextUri'])
+
+
+class FacebookLoginView(SocialView):
     """
     Handle Facebook login.
 
@@ -399,49 +441,30 @@ class FacebookLoginView(StormpathView):
     The location this view redirects users to can be configured via
     Flask-Stormpath settings.
     """
-
     def __init__(self, *args, **kwargs):
-        super(FacebookLoginView, self).__init__({})
-
-    def dispatch_request(self):
         if not FACEBOOK:
             raise StormpathError({
-                'developerMessage': 'Facebook does not support python 3'
+                'developerMessage': 'Facebook does not support python 3.'
             })
-        # First, we'll try to grab the Facebook user's data by accessing their
-        # session data.
+
+        # We'll try to grab the Facebook user's data by accessing their
+        # session data. If this doesn't exist, we'll abort with a
+        # 400 BAD REQUEST (since something horrible must have happened).
         facebook_user = get_user_from_cookie(
             request.cookies,
             current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
             current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
         )
+        if facebook_user:
+            access_token = facebook_user.get('access_token')
+        else:
+            abort(400)
 
-        # Now, we'll try to have Stormpath either create or update this user's
-        # Stormpath account, by automatically handling the Facebook Graph API
-        # stuff for us.
-        try:
-            account = User.from_facebook(facebook_user.get('access_token'))
-        except StormpathError as error:
-            # If an error was raised here that means that it was caused by
-            # either a bad Facebook Directory configuration, or the provided
-            # Account credentials are not valid.
-            flash(error.message.get('message'))
-            redirect_url = current_app.config[
-                'stormpath']['web']['login']['nextUri']
-            redirect_url = redirect_url if redirect_url else '/'
-            return redirect(redirect_url)
-
-        # Now we'll log the new user into their account.  From this point on,
-        # this Facebook user will be treated exactly like a normal Stormpath
-        # user!
-        login_user(account, remember=True)
-
-        return redirect(
-            request.args.get('next') or
-            current_app.config['stormpath']['web']['login']['nextUri'])
+        super(FacebookLoginView, self).__init__(
+            social_name='facebook', access_token=access_token)
 
 
-class GoogleLoginView(StormpathView):
+class GoogleLoginView(SocialView):
     """
     Handle Google login.
 
@@ -457,33 +480,12 @@ class GoogleLoginView(StormpathView):
     Flask-Stormpath settings.
     """
     def __init__(self, *args, **kwargs):
-        super(GoogleLoginView, self).__init__({})
-
-    def dispatch_request(self):
-        # First, we'll try to grab the 'code' query string that Google should
+        # We'll try to grab the 'code' query string that Google should
         # be passing to us.  If this doesn't exist, we'll abort with a
         # 400 BAD REQUEST (since something horrible must have happened).
         code = request.args.get('code')
         if not code:
             abort(400)
 
-        # Next, we'll try to have Stormpath either create or update this user's
-        # Stormpath account, by automatically handling the Google API stuff
-        # for us.
-        try:
-            account = User.from_google(code)
-        except StormpathError as error:
-            flash(error.message.get('message'))
-            redirect_url = current_app.config[
-                'stormpath']['web']['login']['nextUri']
-            redirect_url = redirect_url if redirect_url else '/'
-            return redirect(redirect_url)
-
-        # Now we'll log the new user into their account.  From this point on,
-        # this Google user will be treated exactly like a normal Stormpath
-        # user!
-        login_user(account, remember=True)
-
-        return redirect(
-            request.args.get('next') or
-            current_app.config['stormpath']['web']['login']['nextUri'])
+        super(GoogleLoginView, self).__init__(
+            social_name='google', access_token=code)

@@ -4,10 +4,12 @@
 from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
-from flask_stormpath.views import StormpathView
+from flask_stormpath.views import (
+    StormpathView, FacebookLoginView, GoogleLoginView)
 from flask import session, url_for, current_app
 from flask.ext.login import current_user
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, BadRequest
+from mock import patch
 import json
 
 
@@ -1063,39 +1065,166 @@ class TestMe(StormpathViewTestCase):
             self.assertEqual(json.loads(resp.data), json_data)
 
 
-class SocialViewsTestMixin(object):
-    """Our mixin for testing social views."""
-
-    def __init__(self, social_name, *args, **kwargs):
-        # Validate social_name
-        if social_name == 'facebook' or social_name == 'google':
-            self.social_name = social_name
-        else:
-            raise ValueError('Wrong social name.')
-
-    def test_access_token(self):
-        self.fail('Implement tests!')
-
-    def test_user_logged_in_and_redirect(self):
-        self.fail('Implement tests!')
-
-    def test_error_retrieving_access_token(self):
-        self.fail('Implement tests!')
-
-    def test_error_retrieving_user(self):
-        self.fail('Implement tests!')
-
-
 class TestFacebookLogin(StormpathViewTestCase):
     """ Test our Facebook login view. """
-    def test_reminder(self):
-        self.fail('Implement tests!')
 
-    def test_python3_support(self):
-        self.fail('Implement tests!')
+    @patch('flask_stormpath.views.get_user_from_cookie')
+    def test_access_token(self, access_token_mock):
+        # Ensure that proper access code fetching will continue processing
+        # the view.
+        access_token_mock.return_value = {
+            'access_token': 'mocked access token'}
+        with self.app.test_request_context():
+            FacebookLoginView()
+
+        # Ensure that invalid access code fetching will return a 400 BadRequest
+        # response.
+        access_token_mock.return_value = None
+        with self.app.test_request_context():
+            with self.assertRaises(BadRequest) as error:
+                FacebookLoginView()
+            self.assertEqual(error.exception.name, 'Bad Request')
+            self.assertEqual(error.exception.code, 400)
+
+    @patch('flask_stormpath.views.get_user_from_cookie')
+    @patch('flask_stormpath.views.SocialView.get_account')
+    def test_user_logged_in_and_redirect(self, user_mock, access_token_mock):
+        # Access token is retrieved on the front end of our applications, so
+        # we have to mock it.
+        access_token_mock.return_value = {
+            'access_token': 'mocked access token'}
+        user_mock.return_value = self.user
+
+        # Setting redirect URL to something that is easy to check
+        stormpath_login_redirect_url = '/redirect_for_login'
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_login_redirect_url
+
+        # Ensure that the correct access token will log our user in and
+        # redirect him to the index page.
+        with self.app.test_client() as c:
+            self.assertFalse(current_user)
+            # Log this user in.
+            resp = c.get('/facebook')
+            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(current_user, self.user)
+            location = resp.headers.get('location')
+            self.assertTrue(stormpath_login_redirect_url in location)
+
+    @patch('flask_stormpath.views.get_user_from_cookie')
+    def test_error_retrieving_user(self, access_token_mock):
+        # Access token is retrieved on the front end of our applications, so
+        # we have to mock it.
+        access_token_mock.return_value = {
+            'access_token': 'mocked access token'}
+
+        # Ensure that the user will be redirected back to the login page with
+        # the proper error message rendered in case we fail to fetch the user
+        # account.
+        with self.app.test_client() as c:
+            # First we'll check the error message.
+            self.assertFalse(current_user)
+            # Try to log a user in.
+            resp = c.get('/facebook', follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(current_user.is_anonymous())
+
+            self.assertTrue(
+                'Oops! We encountered an unexpected error.  Please contact ' +
+                'support and explain what you were doing at the time this ' +
+                'error occurred.' in
+                resp.data.decode('utf-8'))
+
+            # Then we'll make the same request, but this time checking the
+            # redirect status code and location.
+
+            # Setting redirect URL to something that is easy to check
+            facebook_login_redirect_url = '/redirect_for_facebook_login'
+            (self.app.config['stormpath'][
+                'web']['login']['uri']) = facebook_login_redirect_url
+
+            # Try to log a user in.
+            resp = c.get('/facebook')
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(current_user.is_anonymous())
+            location = resp.headers.get('location')
+            self.assertTrue(facebook_login_redirect_url in location)
 
 
 class TestGoogleLogin(StormpathViewTestCase):
     """ Test our Google login view. """
-    def test_reminder(self):
-        self.fail('Implement tests!')
+
+    def test_access_token(self):
+        # Ensure that proper access code fetching will continue processing
+        # the view.
+        with self.app.test_request_context() as req:
+            req.request.args = {'code': 'mocked access token'}
+            GoogleLoginView()
+
+        # Ensure that invalid access code fetching will return a 400 BadRequest
+        # response.
+        with self.app.test_request_context() as req:
+            req.request.args = {}
+            with self.assertRaises(BadRequest) as error:
+                GoogleLoginView()
+            self.assertEqual(error.exception.name, 'Bad Request')
+            self.assertEqual(error.exception.code, 400)
+
+    @patch('flask_stormpath.views.SocialView.get_account')
+    def test_user_logged_in_and_redirect(self, user_mock):
+        # Access token is retrieved on the front end of our applications, so
+        # we have to mock it.
+        user_mock.return_value = self.user
+
+        # Setting redirect URL to something that is easy to check
+        stormpath_login_redirect_url = '/redirect_for_login'
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_login_redirect_url
+
+        # Ensure that the correct access token will log our user in and
+        # redirect him to the index page.
+        with self.app.test_client() as c:
+            self.assertFalse(current_user)
+            # Log this user in.
+            resp = c.get(
+                '/google', query_string={'code': 'mocked access token'})
+            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(current_user, self.user)
+            location = resp.headers.get('location')
+            self.assertTrue(stormpath_login_redirect_url in location)
+
+    def test_error_retrieving_user(self):
+        # Ensure that the user will be redirected back to the login page with
+        # the proper error message rendered in case we fail to fetch the user
+        # account.
+        with self.app.test_client() as c:
+            # First we'll check the error message.
+            self.assertFalse(current_user)
+            # Try to log a user in.
+            resp = c.get(
+                '/google', query_string={'code': 'mocked access token'},
+                follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(current_user.is_anonymous())
+
+            self.assertTrue(
+                'Oops! We encountered an unexpected error.  Please contact ' +
+                'support and explain what you were doing at the time this ' +
+                'error occurred.' in
+                resp.data.decode('utf-8'))
+
+            # Then we'll make the same request, but this time checking the
+            # redirect status code and location.
+
+            # Setting redirect URL to something that is easy to check
+            facebook_login_redirect_url = '/redirect_for_facebook_login'
+            (self.app.config['stormpath'][
+                'web']['login']['uri']) = facebook_login_redirect_url
+
+            # Try to log a user in.
+            resp = c.get(
+                '/google', query_string={'code': 'mocked access token'})
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(current_user.is_anonymous())
+            location = resp.headers.get('location')
+            self.assertTrue(facebook_login_redirect_url in location)

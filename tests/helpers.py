@@ -48,16 +48,6 @@ class StormpathTestCase(TestCase):
         self.app.wsgi_app = HttpAcceptWrapper(
             self.default_wsgi_app, self.html_header)
 
-        # Add secrets and ids for social login stuff.
-        self.app.config['STORMPATH_SOCIAL'] = {
-            'FACEBOOK': {
-                'app_id': environ.get('FACEBOOK_APP_ID'),
-                'app_secret': environ.get('FACEBOOK_APP_SECRET')},
-            'GOOGLE': {
-                'client_id': environ.get('GOOGLE_CLIENT_ID'),
-                'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
-        }
-
         # Create a user.
         with self.app.app_context():
             self.user = User.create(
@@ -220,6 +210,18 @@ def bootstrap_flask_app(app):
         'STORMPATH_API_KEY_SECRET')
     a.config['STORMPATH_APPLICATION'] = app.name
     a.config['WTF_CSRF_ENABLED'] = False
+    a.config['STORMPATH_ENABLE_FACEBOOK'] = True
+    a.config['STORMPATH_ENABLE_GOOGLE'] = True
+
+    # Add secrets and ids for social login stuff.
+    a.config['STORMPATH_SOCIAL'] = {
+        'FACEBOOK': {
+            'app_id': environ.get('FACEBOOK_APP_ID'),
+            'app_secret': environ.get('FACEBOOK_APP_SECRET')},
+        'GOOGLE': {
+            'client_id': environ.get('GOOGLE_CLIENT_ID'),
+            'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
+    }
 
     return a
 
