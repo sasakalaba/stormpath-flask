@@ -387,6 +387,13 @@ class SocialView(View):
         self.access_token = kwargs.pop('access_token')
         self.provider_social = getattr(Provider, self.social_name.upper())
 
+        # Set a user error message in case the login fails.
+        self.error_message = (
+            'Oops! We encountered an unexpected error.  Please contact ' +
+            'support and explain what you were doing at the time this ' +
+            'error occurred.'
+        )
+
     def get_account(self):
         return getattr(
             User, 'from_%s' % self.social_name)(self.access_token)
@@ -398,8 +405,8 @@ class SocialView(View):
         # for us.
         try:
             account = self.get_account()
-        except StormpathError as error:
-            flash(error.message.get('message'))
+        except StormpathError:
+            flash(self.error_message)
             redirect_url = current_app.config[
                 'stormpath']['web']['login']['uri']
             redirect_url = redirect_url if redirect_url else '/'
