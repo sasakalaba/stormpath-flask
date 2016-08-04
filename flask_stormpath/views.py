@@ -44,12 +44,14 @@ class StormpathView(View):
 
     def __init__(self, config, *args, **kwargs):
         self.config = config
-        self.form = (
-            StormpathForm.specialize_form(config['form'])()
-            if config else None)
+        self.form = StormpathForm.specialize_form(config.get('form'))()
         self.allowed_types = current_app.config['stormpath']['web']['produces']
         self.accept_header = request.accept_mimetypes.best_match(
             self.allowed_types)
+
+        # If the request type is not html or json, return 406.
+        if self.accept_header not in self.allowed_types:
+            abort(406)
 
     def make_stormpath_response(
             self, data, template=None, return_json=True, status_code=200):
@@ -61,23 +63,19 @@ class StormpathView(View):
             stormpath_response = render_template(template, **data)
         return stormpath_response
 
+    @property
     def request_wants_json(self):
         """ Check if request wants json. """
         return self.accept_header == 'application/json'
 
-    def validate_request(self):
-        """ If the request type is not html or json, return 406. """
-        if self.accept_header not in self.allowed_types:
-            abort(406)
-
     def process_request(self):
         """ Custom logic specialized for each view. Must be implemented in
             the subclass. """
-        raise StormpathForm('You must implement process_request on your view.')
+        raise NotImplementedError('Subclasses must implement this method.')
 
     def process_stormpath_error(self, error):
         """ Check for StormpathErrors. """
-        if self.request_wants_json():
+        if self.request_wants_json:
             status_code = error.status if error.status else 400
             return self.make_stormpath_response(
                 json.dumps({
@@ -90,16 +88,13 @@ class StormpathView(View):
     def dispatch_request(self):
         """ Basic view skeleton. """
 
-        # Ensure the request is either html or json.
-        self.validate_request()
-
         if request.method == 'POST':
             # If we received a POST request with valid information, we'll
             # continue processing.
 
             if not self.form.validate_on_submit():
                 # If form.data is not valid, return error messages.
-                if self.request_wants_json():
+                if self.request_wants_json:
                     return self.make_stormpath_response(
                         data=json.dumps({
                             'status': 400,
@@ -116,7 +111,7 @@ class StormpathView(View):
                     if stormpath_error:
                         return stormpath_error
 
-        if self.request_wants_json():
+        if self.request_wants_json:
             return self.make_stormpath_response(data=self.form.json)
 
         return self.make_stormpath_response(
@@ -166,7 +161,7 @@ class RegisterView(StormpathView):
                 'stormpath']['web']['verifyEmail']['enabled']):
             login_user(account, remember=True)
 
-        if self.request_wants_json():
+        if self.request_wants_json:
             return self.make_stormpath_response(data=account.to_json())
 
         # Set redirect priority
@@ -207,10 +202,16 @@ class LoginView(StormpathView):
         # query parameter, or the Stormpath login nextUri setting.
         login_user(account, remember=True)
 
-        if self.request_wants_json():
+        if self.request_wants_json:
             return self.make_stormpath_response(data=current_user.to_json())
 
-        return redirect(request.args.get('next') or self.config['nextUri'])
+        # Set redirect priority
+        redirect_url = request.args.get('next')
+        if not redirect_url:
+            redirect_url = self.config['nextUri']
+            if not redirect_url:
+                redirect_url = '/'
+        return redirect(redirect_url)
 
 
 class ForgotView(StormpathView):
@@ -255,7 +256,7 @@ class ForgotView(StormpathView):
         # this user, we'll display a success page prompting the user
         # to check their inbox to complete the password reset process.
 
-        if self.request_wants_json():
+        if self.request_wants_json:
             return self.make_stormpath_response(
                 data=json.dumps({
                     'status': 200,
@@ -307,7 +308,7 @@ class ChangeView(StormpathView):
         account = User.from_login(self.account.email, self.form.password.data)
         login_user(account, remember=True)
 
-        if self.request_wants_json():
+        if self.request_wants_json:
             return self.make_stormpath_response(data=current_user.to_json())
 
         return self.make_stormpath_response(
@@ -339,13 +340,14 @@ class LogoutView(StormpathView):
     def dispatch_request(self):
         logout_user()
 
-        if self.request_wants_json():
-            return self.make_stormpath_response(data=self.form.json)
+        # Set redirect priority
+        redirect_url = self.config['nextUri']
+        if not redirect_url:
+            redirect_url = '/'
+        return redirect(redirect_url)
 
-        return redirect(self.config['nextUri'])
 
-
-class MeView(StormpathView):
+class MeView(View):
     """
     Get a JSON object with the current user information.
 
@@ -354,9 +356,6 @@ class MeView(StormpathView):
         json support or form and api request validation.
     """
     decorators = [login_required]
-
-    def __init__(self, *args, **kwargs):
-        pass
 
     def dispatch_request(self):
         expansion = Expansion()
@@ -368,13 +367,15 @@ class MeView(StormpathView):
             current_user._expand = expansion
         current_user.refresh()
 
-        return self.make_stormpath_response(current_user.to_json())
+        response = make_response(current_user.to_json(), 200)
+        response.mimetype = 'application/json'
+        return response
 
 
 """ Social views. """
 
 
-class SocialView(StormpathView):
+class SocialView(View):
     """ Parent class for social login views. """
     def __init__(self, *args, **kwargs):
         # First validate social view call
@@ -385,8 +386,6 @@ class SocialView(StormpathView):
         # Then set the access token and the provider
         self.access_token = kwargs.pop('access_token')
         self.provider_social = getattr(Provider, self.social_name.upper())
-
-        super(SocialView, self).__init__({})
 
     def get_account(self):
         return getattr(

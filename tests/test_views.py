@@ -6,9 +6,9 @@ from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import (
     StormpathView, FacebookLoginView, GoogleLoginView)
-from flask import session, url_for, current_app
+from flask import session, url_for
 from flask.ext.login import current_user
-from werkzeug.exceptions import HTTPException, BadRequest
+from werkzeug.exceptions import HTTPException, BadRequest, NotAcceptable
 from mock import patch
 import json
 
@@ -103,24 +103,31 @@ class TestHelperMethods(StormpathViewTestCase):
 
     def setUp(self):
         super(TestHelperMethods, self).setUp()
-        with self.app.app_context():
-            with current_app.test_request_context():
-                self.view = StormpathView({})
+        # We need a config for a StormpathView, so we'll use login form config.
+        self.config = self.app.config['stormpath']['web']['login']
+
+        # Ensure that StormpathView.accept_header is properly set.
+        with self.app.test_client() as c:
+            # Create a request with html accept header
+            c.get('/')
+
+            with self.app.app_context():
+                self.view = StormpathView(self.config)
 
     def test_request_wants_json(self):
         # Ensure that request_wants_json returns False if 'application/json'
         # accept header isn't present.
         self.view.accept_header = 'text/html'
-        self.assertFalse(self.view.request_wants_json())
+        self.assertFalse(self.view.request_wants_json)
 
         self.view.accept_header = None
-        self.assertFalse(self.view.request_wants_json())
+        self.assertFalse(self.view.request_wants_json)
 
         self.view.accept_header = 'foo/bar'
-        self.assertFalse(self.view.request_wants_json())
+        self.assertFalse(self.view.request_wants_json)
 
         self.view.accept_header = 'application/json'
-        self.assertTrue(self.view.request_wants_json())
+        self.assertTrue(self.view.request_wants_json)
 
     def test_make_stormpath_response(self):
         data = {'foo': 'bar'}
@@ -141,17 +148,32 @@ class TestHelperMethods(StormpathViewTestCase):
             self.assertTrue(isinstance(resp, unicode))
 
     def test_validate_request(self):
-        # Ensure that an invalid accept header type will return a 406.
-        self.view.accept_header = 'text/html'
-        self.view.validate_request()
+        with self.app.test_client() as c:
+            # Create a request with html accept header
+            c.get('/')
 
-        self.view.accept_header = 'application/json'
-        self.view.validate_request()
+            with self.app.app_context():
+                self.view.__init__(self.config)
 
-        self.view.accept_header = 'foo/bar'
-        with self.assertRaises(HTTPException) as http_error:
-            self.view.validate_request()
-            self.assertEqual(http_error.exception.code, 406)
+            # Create a request with json accept header
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, self.json_header)
+            c.get('/')
+
+            with self.app.app_context():
+                self.view.__init__(self.config)
+
+            # Create a request with an accept header not supported by
+            # flask_stormpath.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, 'text/plain')
+            c.get('/')
+
+            # Ensure that an invalid accept header type will return a 406.
+            with self.app.app_context():
+                with self.assertRaises(HTTPException) as http_error:
+                    self.view.__init__(self.config)
+                    self.assertEqual(http_error.exception.code, 406)
 
     def test_accept_header(self):
         # Ensure that StormpathView.accept_header is properly set.
@@ -160,7 +182,7 @@ class TestHelperMethods(StormpathViewTestCase):
             c.get('/')
 
             with self.app.app_context():
-                view = StormpathView({})
+                view = StormpathView(self.config)
                 self.assertEqual(view.accept_header, 'text/html')
 
             # Create a request with json accept header
@@ -169,7 +191,7 @@ class TestHelperMethods(StormpathViewTestCase):
             c.get('/')
 
             with self.app.app_context():
-                view = StormpathView({})
+                view = StormpathView(self.config)
                 self.assertEqual(view.accept_header, 'application/json')
 
             # Create a request with an accept header not supported by
@@ -179,8 +201,10 @@ class TestHelperMethods(StormpathViewTestCase):
             c.get('/')
 
             with self.app.app_context():
-                view = StormpathView({})
-                self.assertEqual(view.accept_header, None)
+                with self.assertRaises(NotAcceptable) as error:
+                    view = StormpathView(self.config)
+                    self.assertEqual(error.exception.name, 'Not Acceptable')
+                    self.assertEqual(error.exception.code, 406)
 
 
 class TestRegister(StormpathViewTestCase):
