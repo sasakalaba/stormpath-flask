@@ -43,6 +43,13 @@ class StormpathViewTestCase(StormpathTestCase):
             # Ensure that the HTTP status code is correct.
             self.assertEqual(resp.status_code, status_code)
 
+            # If we're expecting a redirect, follow the redirect flow so we
+            # can access the final response data.
+            if status_code == 302:
+                resp = allowed_methods[method](
+                    '/%s' % view, follow_redirects=True)
+                self.assertEqual(resp.status_code, 200)
+
             # Check that response is json.
             self.assertFalse(self.check_header('text/html', resp.headers[0]))
             self.assertTrue(self.check_header(
@@ -722,6 +729,10 @@ class TestLogout(StormpathViewTestCase):
         self.form_fields = self.app.config['stormpath']['web']['login'][
             'form']['fields']
 
+        # We'll set the redirect url login since test client cannot redirect
+        # to index view.
+        self.app.config['stormpath']['web']['logout']['nextUri'] = '/login'
+
         # Specify expected response.
         expected_response = [
             {'label': 'Username or Email',
@@ -736,7 +747,7 @@ class TestLogout(StormpathViewTestCase):
              'type': 'password'}]
 
         self.assertJsonResponse(
-            'get', 'logout', 200, json.dumps(expected_response))
+            'get', 'logout', 302, json.dumps(expected_response))
 
 
 class TestForgot(StormpathViewTestCase):
