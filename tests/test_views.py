@@ -156,27 +156,48 @@ class TestHelperMethods(StormpathViewTestCase):
 
     def test_validate_request(self):
         with self.app.test_client() as c:
-            # Create a request with html accept header
+            # Ensure that a request with an html accept header will return an
+            # html response.
             c.get('/')
-
             with self.app.app_context():
                 self.view.__init__(self.config)
+                self.assertEqual(self.view.accept_header, 'text/html')
 
-            # Create a request with json accept header
+            # Ensure that a request with a json accept header will return a
+            # json response.
             self.app.wsgi_app = HttpAcceptWrapper(
                 self.default_wsgi_app, self.json_header)
             c.get('/')
-
             with self.app.app_context():
                 self.view.__init__(self.config)
+                self.assertEqual(self.view.accept_header, 'application/json')
 
-            # Create a request with an accept header not supported by
-            # flask_stormpath.
+            # Ensure that a request with no accept headers will return the
+            # first allowed type.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, '')
+            c.get('/')
+            with self.app.app_context():
+                self.view.__init__(self.config)
+                self.assertEqual(
+                    self.view.accept_header,
+                    self.app.config['stormpath']['web']['produces'][0])
+
+            # Ensure that a request with */* accept header will return the
+            # first allowed type.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, '*/*')
+            c.get('/')
+            with self.app.app_context():
+                self.view.__init__(self.config)
+                self.assertEqual(
+                    self.view.accept_header,
+                    self.app.config['stormpath']['web']['produces'][0])
+
+            # Ensure that an invalid accept header type will return a 406.
             self.app.wsgi_app = HttpAcceptWrapper(
                 self.default_wsgi_app, 'text/plain')
             c.get('/')
-
-            # Ensure that an invalid accept header type will return a 406.
             with self.app.app_context():
                 with self.assertRaises(HTTPException) as http_error:
                     self.view.__init__(self.config)

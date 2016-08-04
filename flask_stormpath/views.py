@@ -45,9 +45,18 @@ class StormpathView(View):
     def __init__(self, config, *args, **kwargs):
         self.config = config
         self.form = StormpathForm.specialize_form(config.get('form'))()
+
+        # Fetch the request type and match it against our allowed types.
         self.allowed_types = current_app.config['stormpath']['web']['produces']
-        self.accept_header = request.accept_mimetypes.best_match(
+        self.request_accept_types = request.accept_mimetypes
+        self.accept_header = self.request_accept_types.best_match(
             self.allowed_types)
+
+        # If no accept types are specified, or the preferred accept type is
+        # */*, response type will be the first element of self.allowed_types.
+        if (len(self.request_accept_types) == 0 or
+                self.request_accept_types[0][0] == '*/*'):
+            self.accept_header = self.allowed_types[0]
 
         # If the request type is not html or json, return 406.
         if self.accept_header not in self.allowed_types:
