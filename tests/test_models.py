@@ -1,14 +1,19 @@
 """Tests for our data models."""
 
 
+import sys
 from flask_stormpath.models import User
 from flask_stormpath import StormpathError
 from stormpath.resources.account import Account
 from stormpath.resources.provider import Provider
 from .helpers import StormpathTestCase
 from os import environ
-from mock import patch
 import json
+
+if sys.version_info.major == 3:
+    from unittest.mock import patch
+else:
+    from mock import patch
 
 
 class TestUser(StormpathTestCase):

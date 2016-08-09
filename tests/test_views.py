@@ -1,6 +1,7 @@
 """Run tests against our custom views."""
 
 
+import sys
 from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
@@ -9,8 +10,12 @@ from flask_stormpath.views import (
 from flask import session, url_for
 from flask.ext.login import current_user
 from werkzeug.exceptions import HTTPException, BadRequest, NotAcceptable
-from mock import patch
 import json
+
+if sys.version_info.major == 3:
+    from unittest.mock import patch
+else:
+    from mock import patch
 
 
 class StormpathViewTestCase(StormpathTestCase):
