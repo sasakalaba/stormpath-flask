@@ -1,7 +1,6 @@
 """Our pluggable views."""
 
 
-import sys
 import json
 from flask import (
     abort,
@@ -17,16 +16,10 @@ from flask.ext.login import login_user, login_required, current_user
 from six import string_types
 from stormpath.resources.provider import Provider
 from stormpath.resources import Expansion
-
 from . import StormpathError, logout_user
 from .forms import StormpathForm
 from .models import User
-
-if sys.version_info.major == 3:
-    FACEBOOK = False
-else:
-    from facebook import get_user_from_cookie
-    FACEBOOK = True
+from facebook import get_user_from_cookie
 
 
 """ Views parent class. """
@@ -457,11 +450,6 @@ class FacebookLoginView(SocialView):
     Flask-Stormpath settings.
     """
     def __init__(self, *args, **kwargs):
-        if not FACEBOOK:
-            raise StormpathError({
-                'developerMessage': 'Facebook does not support python 3.'
-            })
-
         # We'll try to grab the Facebook user's data by accessing their
         # session data. If this doesn't exist, we'll abort with a
         # 400 BAD REQUEST (since something horrible must have happened).
