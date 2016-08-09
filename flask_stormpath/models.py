@@ -74,6 +74,12 @@ class User(Account):
         return return_value
 
     def to_json(self):
+        def datetime_handler(obj):
+            if hasattr(obj, 'isoformat'):
+                return obj.isoformat()
+            else:
+                raise TypeError
+
         attrs = (
             'href',
             'modified_at',
@@ -86,17 +92,14 @@ class User(Account):
             'surname',
             'full_name'
         )
-
-        json_data = {'account': {}}
-        for key in attrs:
-            attr = getattr(self, key, None)
-            json_data['account'][key] = (
-                attr if not isinstance(attr, datetime) else attr.isoformat())
+        json_data = {
+            'account': {attr: getattr(self, attr, None) for attr in attrs}}
 
         # In case me view was called with expanded options enabled.
         if hasattr(self._expand, 'items'):
             json_data['account'].update(self._expand.items)
-        return json.dumps(json_data)
+
+        return json.dumps(json_data, default=datetime_handler)
 
     @classmethod
     def create(

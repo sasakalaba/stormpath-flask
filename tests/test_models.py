@@ -188,6 +188,16 @@ class TestUser(StormpathTestCase):
         }}
         self.assertEqual(json_data, expected_json_data)
 
+    def test_to_json_datetime_handler(self):
+        # Ensure that our custom datetime_handler serializes only datetime
+        # objects.
+        self.user.surname = set([1, 2])
+        with self.assertRaises(TypeError):
+            self.user.to_json()
+
+        self.user.surname = 'foobar'
+        self.user.to_json()
+
 
 class SocialMethodsTestMixin(object):
     """Our mixin for testing User social methods."""
