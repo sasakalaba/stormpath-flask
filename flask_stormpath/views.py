@@ -12,11 +12,12 @@ from flask import (
     make_response
 )
 from flask.views import View
-from flask.ext.login import login_user, login_required, current_user
+from flask.ext.login import (
+    login_user, logout_user, login_required, current_user)
 from six import string_types
 from stormpath.resources.provider import Provider
 from stormpath.resources import Expansion
-from . import StormpathError, logout_user
+from . import StormpathError
 from .forms import StormpathForm
 from .models import User
 from facebook import get_user_from_cookie
