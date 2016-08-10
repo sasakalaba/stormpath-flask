@@ -1,4 +1,36 @@
 # -*- coding: utf-8 -*-
+
+
+import os
+from datetime import timedelta
+from flask import Blueprint, __version__ as flask_version, current_app
+from flask.ext.login import LoginManager, _get_user
+from stormpath.client import Client
+from stormpath.error import Error as StormpathError
+from stormpath_config.loader import ConfigLoader
+from stormpath_config.strategies import (
+    LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
+    LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
+    EnrichClientFromRemoteConfigStrategy,
+    EnrichIntegrationFromRemoteConfigStrategy)
+
+from werkzeug.local import LocalProxy
+from .context_processors import user_context_processor
+from .models import User
+from .settings import StormpathSettings
+from .errors import ConfigurationError
+from .views import (
+    RegisterView,
+    LoginView,
+    ForgotView,
+    ChangeView,
+    LogoutView,
+    MeView,
+    GoogleLoginView,
+    FacebookLoginView
+)
+
+
 """
     flask-stormpath
     ---------------
@@ -20,51 +52,6 @@ __version_info__ = __version__.split('.')
 __author__ = 'Stormpath, Inc.'
 __license__ = 'Apache'
 __copyright__ = '(c) 2012 - 2015 Stormpath, Inc.'
-
-import os
-from datetime import timedelta
-
-from flask import (
-    Blueprint,
-    __version__ as flask_version,
-    _app_ctx_stack as stack,
-    current_app,
-)
-
-from flask.ext.login import (
-    LoginManager,
-    current_user,
-    _get_user,
-    login_required,
-    login_user,
-    logout_user
-)
-
-from stormpath.client import Client
-from stormpath.error import Error as StormpathError
-from stormpath_config.loader import ConfigLoader
-from stormpath_config.strategies import (
-    LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
-    LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
-    EnrichClientFromRemoteConfigStrategy, # MoveAPIKeyToClientAPIKeyStrategy
-    EnrichIntegrationFromRemoteConfigStrategy)
-
-from werkzeug.local import LocalProxy
-
-from .context_processors import user_context_processor
-from .models import User
-from .settings import StormpathSettings
-from .errors import ConfigurationError
-from .views import (
-    RegisterView,
-    LoginView,
-    ForgotView,
-    ChangeView,
-    LogoutView,
-    MeView,
-    GoogleLoginView,
-    FacebookLoginView
-)
 
 
 # A proxy for the current user.
@@ -142,7 +129,8 @@ class StormpathManager(object):
         """
         # Basic Stormpath credentials and configuration.
         web_config_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'config/default-config.yml')
+            os.path.dirname(os.path.abspath(__file__)),
+            'config/default-config.yml')
         config_loader = ConfigLoader(
             load_strategies=[
                 LoadFileConfigStrategy(web_config_file),
@@ -155,7 +143,8 @@ class StormpathManager(object):
                 LoadEnvConfigStrategy(prefix='STORMPATH')
             ],
             post_processing_strategies=[
-                LoadAPIKeyFromConfigStrategy(), # MoveAPIKeyToClientAPIKeyStrategy()
+                LoadAPIKeyFromConfigStrategy(),
+                # MoveAPIKeyToClientAPIKeyStrategy()
             ],
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
@@ -163,12 +152,11 @@ class StormpathManager(object):
         # Which fields should be displayed when registering new users?
         config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
         config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
-        config.setdefault('STORMPATH_ENABLE_EMAIL', True)  # If this is diabled,
-                                                           # only social login can
-                                                           # be used.
+        # FIXME: If this is disabled, only social login can be used.
+        config.setdefault('STORMPATH_ENABLE_EMAIL', True)
 
-        # Configure URL mappings.  These URL mappings control which URLs will be
-        # used by Flask-Stormpath views.
+        # Configure URL mappings.  These URL mappings control which URLs will
+        # be used by Flask-Stormpath views.
         config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
         config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
 
@@ -176,12 +164,17 @@ class StormpathManager(object):
         # FIXME: this breaks the code because it's not in the spec
         # config.setdefault('STORMPATH_CACHE', None)
 
-        # Configure templates.  These template settings control which templates are
-        # used to render the Flask-Stormpath views.
+        # Configure templates.  These template settings control which
+        # templates are used to render the Flask-Stormpath views.
         # FIXME: some of the settings break the code because they're not in the spec
-        config.setdefault('STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
-        # config.setdefault('STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE', 'flask_stormpath/forgot_email_sent.html')
-        # config.setdefault('STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE', 'flask_stormpath/forgot_complete.html')
+        config.setdefault(
+            'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
+        # config.setdefault(
+        #    'STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE',
+        #    'flask_stormpath/forgot_email_sent.html')
+        # config.setdefault(
+        #    'STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE',
+        #    'flask_stormpath/forgot_complete.html')
 
         # Social login configuration.
         # FIXME: this breaks the code because it's not in the spec
@@ -191,7 +184,8 @@ class StormpathManager(object):
         config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
         config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
 
-        # Cookie name (this is not overridable by users, at least not explicitly).
+        # Cookie name (this is not overridable by users, at least
+        # not explicitly).
         config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
 
         for key, value in config.items():
@@ -309,11 +303,15 @@ class StormpathManager(object):
                 "Please disable this workflow on this application's default "
                 "account store.")
 
-        if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(config['STORMPATH_COOKIE_DOMAIN'], str):
-            raise ConfigurationError('STORMPATH_COOKIE_DOMAIN must be a string.')
+        if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(
+                config['STORMPATH_COOKIE_DOMAIN'], str):
+            raise ConfigurationError(
+                'STORMPATH_COOKIE_DOMAIN must be a string.')
 
-        if config['STORMPATH_COOKIE_DURATION'] and not isinstance(config['STORMPATH_COOKIE_DURATION'], timedelta):
-            raise ConfigurationError('STORMPATH_COOKIE_DURATION must be a timedelta object.')
+        if config['STORMPATH_COOKIE_DURATION'] and not isinstance(
+                config['STORMPATH_COOKIE_DURATION'], timedelta):
+            raise ConfigurationError(
+                'STORMPATH_COOKIE_DURATION must be a timedelta object.')
 
     def init_login(self, app):
         """
@@ -324,8 +322,10 @@ class StormpathManager(object):
 
         :param obj app: The Flask app.
         """
-        app.config['REMEMBER_COOKIE_DURATION'] = app.config['STORMPATH_COOKIE_DURATION']
-        app.config['REMEMBER_COOKIE_DOMAIN'] = app.config['STORMPATH_COOKIE_DOMAIN']
+        app.config['REMEMBER_COOKIE_DURATION'] = app.config[
+            'STORMPATH_COOKIE_DURATION']
+        app.config['REMEMBER_COOKIE_DOMAIN'] = app.config[
+            'STORMPATH_COOKIE_DOMAIN']
 
         app.login_manager = LoginManager(app)
         app.login_manager.user_callback = self.load_user
@@ -335,7 +335,8 @@ class StormpathManager(object):
             app.login_manager.login_view = 'stormpath.login'
 
         # Make this Flask session expire automatically.
-        app.config['PERMANENT_SESSION_LIFETIME'] = app.config['STORMPATH_COOKIE_DURATION']
+        app.config['PERMANENT_SESSION_LIFETIME'] = app.config[
+            'STORMPATH_COOKIE_DURATION']
 
     def init_routes(self, app):
         """
@@ -357,7 +358,8 @@ class StormpathManager(object):
             app.add_url_rule(
                 os.path.join(
                     base_path,
-                    app.config['stormpath']['web']['register']['uri'].strip('/')),
+                    app.config['stormpath']['web']['register'][
+                        'uri'].strip('/')),
                 'stormpath.register',
                 RegisterView.as_view('register'),
                 methods=['GET', 'POST'],
@@ -366,7 +368,8 @@ class StormpathManager(object):
         if app.config['stormpath']['web']['login']['enabled']:
             app.add_url_rule(
                 os.path.join(
-                    base_path, app.config['stormpath']['web']['login']['uri'].strip('/')),
+                    base_path, app.config['stormpath']['web']['login'][
+                        'uri'].strip('/')),
                 'stormpath.login',
                 LoginView.as_view('login'),
                 methods=['GET', 'POST'],
@@ -376,7 +379,8 @@ class StormpathManager(object):
             app.add_url_rule(
                 os.path.join(
                     base_path,
-                    app.config['stormpath']['web']['forgotPassword']['uri'].strip('/')),
+                    app.config['stormpath']['web']['forgotPassword'][
+                        'uri'].strip('/')),
                 'stormpath.forgot',
                 ForgotView.as_view('forgot'),
                 methods=['GET', 'POST'],
@@ -384,7 +388,8 @@ class StormpathManager(object):
             app.add_url_rule(
                 os.path.join(
                     base_path,
-                    app.config['stormpath']['web']['changePassword']['uri'].strip('/')),
+                    app.config['stormpath']['web']['changePassword'][
+                        'uri'].strip('/')),
                 'stormpath.forgot_change',
                 ChangeView.as_view('change'),
                 methods=['GET', 'POST'],
@@ -394,7 +399,8 @@ class StormpathManager(object):
             app.add_url_rule(
                 os.path.join(
                     base_path,
-                    app.config['stormpath']['web']['logout']['uri'].strip('/')),
+                    app.config['stormpath']['web']['logout'][
+                        'uri'].strip('/')),
                 'stormpath.logout',
                 LogoutView.as_view('logout'),
             )
