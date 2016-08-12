@@ -790,14 +790,15 @@ class TestForgot(StormpathViewTestCase):
         # Ensure that proper templates are rendered based on the request
         # method.
         with self.app.test_client() as c:
-            # Ensure request.GET will render the forgot.html template.
+            # Ensure request.GET will render the forgot_password.html template.
             resp = c.get('/forgot')
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(
                 'Enter your email address below to reset your password.' in
                 resp.data.decode('utf-8'))
 
-            # Ensure that request.POST will render the forgot_email_sent.html
+            # Ensure that request.POST will render the
+            # forgot_password_success.html
             resp = c.post('/forgot', data={'email': 'r@rdegges.com'})
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(
@@ -900,14 +901,15 @@ class TestChange(StormpathViewTestCase):
         # Ensure that proper templates are rendered based on the request
         # method.
         with self.app.test_client() as c:
-            # Ensure request.GET will render the forgot_change.html template.
+            # Ensure request.GET will render the change_password.html template.
             resp = c.get(self.reset_password_url)
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(
                 'Enter your new account password below.' in
                 resp.data.decode('utf-8'))
 
-            # Ensure that request.POST will render the forgot_complete.html
+            # Ensure that request.POST will render the
+            # change_password_success.html
             resp = c.post(self.reset_password_url, data={
                 'password': 'woot1DontLoveCookies!',
                 'confirm_password': 'woot1DontLoveCookies!'})
@@ -934,13 +936,13 @@ class TestChange(StormpathViewTestCase):
     def test_sptoken(self):
         # Ensure that a proper token will render the change view
         with self.app.test_client() as c:
-            # Ensure request.GET will render the forgot_change.html template.
+            # Ensure request.GET will render the change_password.html template.
             resp = c.get(self.reset_password_url)
             self.assertEqual(resp.status_code, 200)
 
         # Ensure that a missing token will return a 400 error
         with self.app.test_client() as c:
-            # Ensure request.GET will render the forgot_change.html template.
+            # Ensure request.GET will render the change_password.html template.
             resp = c.get('/change')
             self.assertEqual(resp.status_code, 400)
 

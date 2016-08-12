@@ -31,8 +31,8 @@ from .errors import ConfigurationError
 from .views import (
     RegisterView,
     LoginView,
-    ForgotView,
-    ChangeView,
+    ForgotPasswordView,
+    ChangePasswordView,
     LogoutView,
     MeView,
     GoogleLoginView,
@@ -158,6 +158,9 @@ class StormpathManager(object):
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
 
+        # FIXME: This is a temporary hardcoded hotfix and needs to be removed.
+        config['stormpath']['client']['apiKey']['file'] = None
+
         # Which fields should be displayed when registering new users?
         config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
         config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
@@ -180,10 +183,10 @@ class StormpathManager(object):
             'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
         # config.setdefault(
         #    'STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE',
-        #    'flask_stormpath/forgot_email_sent.html')
+        #    'flask_stormpath/forgot_password_success.html')
         # config.setdefault(
         #    'STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE',
-        #    'flask_stormpath/forgot_complete.html')
+        #    'flask_stormpath/change_password_success.html')
 
         # Social login configuration.
         # FIXME: this breaks the code because it's not in the spec
@@ -241,6 +244,7 @@ class StormpathManager(object):
         self.application = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
 
+    # FIXME: this will be moved to python config
     def check_settings(self, config):
         """
         Ensure the user-specified settings are valid.
@@ -391,7 +395,7 @@ class StormpathManager(object):
                     app.config['stormpath']['web']['forgotPassword'][
                         'uri'].strip('/')),
                 'stormpath.forgot',
-                ForgotView.as_view('forgot'),
+                ForgotPasswordView.as_view('forgot'),
                 methods=['GET', 'POST'],
             )
             app.add_url_rule(
@@ -400,7 +404,7 @@ class StormpathManager(object):
                     app.config['stormpath']['web']['changePassword'][
                         'uri'].strip('/')),
                 'stormpath.forgot_change',
-                ChangeView.as_view('change'),
+                ChangePasswordView.as_view('change'),
                 methods=['GET', 'POST'],
             )
 

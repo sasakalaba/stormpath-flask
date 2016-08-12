@@ -118,7 +118,7 @@ class StormpathView(View):
             return self.make_stormpath_response(data=self.form.json)
 
         return self.make_stormpath_response(
-            template=self.config['template'], data={'form': self.form},
+            template=self.template, data={'form': self.form},
             return_json=False)
 
 
@@ -136,6 +136,7 @@ class RegisterView(StormpathView):
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    template = 'flask_stormpath/register.html'
 
     def __init__(self, *args, **kwargs):
         config = current_app.config['stormpath']['web']['register']
@@ -188,6 +189,7 @@ class LoginView(StormpathView):
     template that is used to render this page can all be controlled via
     Flask-Stormpath settings.
     """
+    template = 'flask_stormpath/login.html'
 
     def __init__(self, *args, **kwargs):
         config = current_app.config['stormpath']['web']['login']
@@ -217,7 +219,7 @@ class LoginView(StormpathView):
         return redirect(redirect_url)
 
 
-class ForgotView(StormpathView):
+class ForgotPasswordView(StormpathView):
     """
     Initialize 'password reset' functionality for a user who has forgotten his
     password.
@@ -228,10 +230,12 @@ class ForgotView(StormpathView):
     The URL this view is bound to, and the template that is used to render
     this page can all be controlled via Flask-Stormpath settings.
     """
+    template = 'flask_stormpath/forgot_password.html'
+    template_success = 'flask_stormpath/forgot_password_success.html'
 
     def __init__(self, *args, **kwargs):
         config = current_app.config['stormpath']['web']['forgotPassword']
-        super(ForgotView, self).__init__(config, *args, **kwargs)
+        super(ForgotPasswordView, self).__init__(config, *args, **kwargs)
 
     def process_stormpath_error(self, error):
         # If the error message contains 'https', it means something
@@ -245,7 +249,7 @@ class ForgotView(StormpathView):
         # email address.
         else:
             error.message['message'] = 'Invalid email address.'
-        return super(ForgotView, self).process_stormpath_error(error)
+        return super(ForgotPasswordView, self).process_stormpath_error(error)
 
     def process_request(self):
         # Try to fetch the user's account from Stormpath.  If this
@@ -267,11 +271,11 @@ class ForgotView(StormpathView):
                 status_code=200)
 
         return self.make_stormpath_response(
-            template=self.config['templateSuccess'],
-            data={'user': account}, return_json=False)
+            template=self.template_success, data={'user': account},
+            return_json=False)
 
 
-class ChangeView(StormpathView):
+class ChangePasswordView(StormpathView):
     """
     Allow a user to change his password.
 
@@ -282,10 +286,12 @@ class ChangeView(StormpathView):
     The URL this view is bound to, and the template that is used to render
     this page can all be controlled via Flask-Stormpath settings.
     """
+    template = "flask_stormpath/change_password.html"
+    template_success = "flask_stormpath/change_password_success.html"
 
     def __init__(self, *args, **kwargs):
         config = current_app.config['stormpath']['web']['changePassword']
-        super(ChangeView, self).__init__(config, *args, **kwargs)
+        super(ChangePasswordView, self).__init__(config, *args, **kwargs)
         try:
             self.account = (
                 current_app.stormpath_manager.application.
@@ -300,7 +306,7 @@ class ChangeView(StormpathView):
                 'https' in error.message.lower()):
             error.message['message'] = (
                 'Something went wrong! Please try again.')
-        return super(ChangeView, self).process_stormpath_error(error)
+        return super(ChangePasswordView, self).process_stormpath_error(error)
 
     def process_request(self):
         # Update this user's passsword.
@@ -315,8 +321,8 @@ class ChangeView(StormpathView):
             return self.make_stormpath_response(data=current_user.to_json())
 
         return self.make_stormpath_response(
-            template=self.config['templateSuccess'],
-            data={'form': self.form}, return_json=False)
+            template=self.template_success, data={'form': self.form},
+            return_json=False)
 
 
 class LogoutView(StormpathView):
