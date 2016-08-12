@@ -107,7 +107,8 @@ class StormpathViewTestCase(StormpathTestCase):
 
             else:
                 # Ensure that response data is the same as the expected data.
-                self.assertEqual(resp.data, expected_response)
+                self.assertEqual(
+                    json.loads(resp.data), json.loads(expected_response))
 
 
 class TestHelperMethods(StormpathViewTestCase):
@@ -506,11 +507,13 @@ class TestRegister(StormpathViewTestCase):
              'name': 'email',
              'placeholder': 'Email',
              'required': True,
+             'visible': True,
              'type': 'email'},
             {'label': 'Password',
              'name': 'password',
              'placeholder': 'Password',
              'required': True,
+             'visible': True,
              'type': 'password'}]
 
         self.assertJsonResponse(
@@ -660,11 +663,13 @@ class TestLogin(StormpathViewTestCase):
              'name': 'login',
              'placeholder': 'Username or Email',
              'required': True,
+             'visible': True,
              'type': 'text'},
             {'label': 'Password',
              'name': 'password',
              'placeholder': 'Password',
              'required': True,
+             'visible': True,
              'type': 'password'}]
 
         self.assertJsonResponse(
@@ -765,11 +770,13 @@ class TestLogout(StormpathViewTestCase):
              'name': 'login',
              'placeholder': 'Username or Email',
              'required': True,
+             'visible': True,
              'type': 'text'},
             {'label': 'Password',
              'name': 'password',
              'placeholder': 'Password',
              'required': True,
+             'visible': True,
              'type': 'password'}]
 
         self.assertJsonResponse(
@@ -828,6 +835,7 @@ class TestForgot(StormpathViewTestCase):
              'name': 'email',
              'placeholder': 'Email',
              'required': True,
+             'visible': True,
              'type': 'email'}]
 
         self.assertJsonResponse(
@@ -970,11 +978,13 @@ class TestChange(StormpathViewTestCase):
              'name': 'password',
              'placeholder': 'Password',
              'required': True,
+             'visible': True,
              'type': 'password'},
             {'label': 'Confirm Password',
              'name': 'confirm_password',
              'placeholder': 'Confirm Password',
              'required': True,
+             'visible': True,
              'type': 'password'}]
 
         self.assertJsonResponse(

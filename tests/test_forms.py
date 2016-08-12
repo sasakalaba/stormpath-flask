@@ -186,12 +186,14 @@ class TestStormpathForm(StormpathTestCase):
                 'name': 'login',
                 'type': 'text',
                 'required': True,
+                'visible': True,
                 'label': 'Username or Email',
                 'placeholder': 'Username or Email'},
             {
                 'name': 'password',
                 'type': 'password',
                 'required': True,
+                'visible': True,
                 'label': 'Password',
                 'placeholder': 'Password'}
         ]
@@ -221,12 +223,14 @@ class TestStormpathForm(StormpathTestCase):
                 'name': 'login',
                 'type': 'text',
                 'required': True,
+                'visible': True,
                 'label': 'Username or Email',
                 'placeholder': 'Username or Email'},
             {
                 'name': 'password',
                 'type': 'password',
                 'required': True,
+                'visible': True,
                 'label': 'Password',
                 'placeholder': 'Password'}
         ]

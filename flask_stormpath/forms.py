@@ -2,6 +2,7 @@
 
 
 from flask.ext.wtf import Form
+from wtforms.widgets import HiddenInput
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, EqualTo, Email
 from stormpath.resources import Resource
@@ -56,6 +57,13 @@ class StormpathForm(Form):
                         'password', message='Passwords do not match.'))
                 json_field['required'] = field_list[field]['required']
 
+                # Apply widgets.
+                if not field_list[field]['visible']:
+                    widget = HiddenInput()
+                else:
+                    widget = None
+                json_field['visible'] = field_list[field]['visible']
+
                 # Apply field classes.
                 if field_list[field]['type'] == 'password':
                     field_class = PasswordField
@@ -79,7 +87,8 @@ class StormpathForm(Form):
                     cls, Resource.from_camel_case(field),
                     field_class(
                         label, validators=validators,
-                        render_kw={"placeholder": placeholder}))
+                        render_kw={"placeholder": placeholder},
+                        widget=widget))
 
         return cls
 
