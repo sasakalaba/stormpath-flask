@@ -3,6 +3,7 @@
 
 from datetime import timedelta
 from os import environ
+from unittest import skip
 from flask.ext.stormpath.errors import ConfigurationError
 from flask.ext.stormpath.settings import (
     StormpathSettings)
@@ -171,7 +172,7 @@ class TestInitSettings(StormpathTestCase):
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
-
+@skip('Check settings will be removed so testing this is no longer relevant.')
 class TestCheckSettings(StormpathTestCase):
     """Ensure our settings checker is working properly."""
 

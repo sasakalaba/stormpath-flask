@@ -83,9 +83,9 @@ class StormpathView(View):
             return self.make_stormpath_response(
                 json.dumps({
                     'status': status_code,
-                    'message': error.message.get('message')}),
+                    'message': error.user_message}),
                 status_code=status_code)
-        flash(error.message.get('message'))
+        flash(error.user_message)
         return None
 
     def dispatch_request(self):
@@ -242,13 +242,12 @@ class ForgotPasswordView(StormpathView):
         # failed on the network (network connectivity, most likely).
         if (isinstance(error.message, string_types) and
                 'https' in error.message.lower()):
-            error.message['message'] = (
-                'Something went wrong! Please try again.')
+            error.user_message = 'Something went wrong! Please try again.'
 
         # Otherwise, it means the user is trying to reset an invalid
         # email address.
         else:
-            error.message['message'] = 'Invalid email address.'
+            error.user_message = 'Invalid email address.'
         return super(ForgotPasswordView, self).process_stormpath_error(error)
 
     def process_request(self):
@@ -304,8 +303,7 @@ class ChangePasswordView(StormpathView):
         # failed on the network (network connectivity, most likely).
         if (isinstance(error.message, string_types) and
                 'https' in error.message.lower()):
-            error.message['message'] = (
-                'Something went wrong! Please try again.')
+            error.user_message = 'Something went wrong! Please try again.'
         return super(ChangePasswordView, self).process_stormpath_error(error)
 
     def process_request(self):

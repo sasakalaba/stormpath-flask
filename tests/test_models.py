@@ -306,8 +306,7 @@ class SocialMethodsTestMixin(object):
                 self.user_from_social('foobar')
 
             self.assertTrue(
-                self.error_message in error.exception.developer_message[
-                    'developerMessage'])
+                self.error_message in error.exception.developer_message)
 
     def test_from_social_invalid_access_token_with_existing_directory(self):
         # First we will create a social directory if one doesn't already
@@ -340,8 +339,7 @@ class SocialMethodsTestMixin(object):
                 self.user_from_social('foobar')
 
             self.assertTrue(
-                self.error_message in error.exception.developer_message[
-                    'developerMessage'])
+                self.error_message in error.exception.developer_message)
 
 
 class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):
