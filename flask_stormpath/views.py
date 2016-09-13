@@ -52,9 +52,12 @@ class StormpathView(View):
                 self.request_accept_types[0][0] == '*/*'):
             self.accept_header = self.allowed_types[0]
 
-        # If the request type is not html or json, return 406.
+        # If the request type is specified, but not html or json, mark the
+        # invalid_request flag.
         if self.accept_header not in self.allowed_types:
-            abort(406)
+            self.invalid_request = True
+        else:
+            self.invalid_request = False
 
     def make_stormpath_response(
             self, data, template=None, return_json=True, status_code=200):
@@ -90,6 +93,21 @@ class StormpathView(View):
 
     def dispatch_request(self):
         """ Basic view skeleton. """
+
+        # If the request is not valid, pass the response to the
+        # 'invalid_request' view.
+        if self.invalid_request:
+            invalid_request_uri = current_app.config[
+                'stormpath']['web']['invalidRequest']['uri']
+            endpoints = [
+                rule.rule for rule in current_app.url_map.iter_rules()]
+
+            # Redirect to a flask view for invalid requests (if implemented).
+            # If not, return a 501.
+            if invalid_request_uri in endpoints:
+                return redirect(invalid_request_uri)
+            else:
+                abort(501)
 
         if request.method == 'POST':
             # If we received a POST request with valid information, we'll

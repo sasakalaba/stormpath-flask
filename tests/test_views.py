@@ -6,10 +6,10 @@ from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import (
-    StormpathView, FacebookLoginView, GoogleLoginView)
-from flask import session, url_for
+    StormpathView, FacebookLoginView, GoogleLoginView, View)
+from flask import session, url_for, Response
 from flask.ext.login import current_user
-from werkzeug.exceptions import HTTPException, BadRequest, NotAcceptable
+from werkzeug.exceptions import BadRequest
 import json
 
 if sys.version_info.major == 3:
@@ -119,6 +119,21 @@ class TestHelperMethods(StormpathViewTestCase):
         # We need a config for a StormpathView, so we'll use login form config.
         self.config = self.app.config['stormpath']['web']['login']
 
+        # Create an 'invalid_request' view. This view has to be implemented by
+        # the developer/framework, so it is not part of the stormpath-flask
+        # library. We will create one for testing purposes. Flask requires
+        # this do be done in setUp, before the first request is handled.
+        class InvalidRequestView(View):
+            def dispatch_request(self):
+                xml = 'Invalid request.'
+                return Response(xml, mimetype='text/xml', status=400)
+
+        self.app.add_url_rule(self.app.config['stormpath']['web'][
+                'invalidRequest']['uri'],
+            'stormpath.invalid_request',
+            InvalidRequestView.as_view('invalid_request'),
+        )
+
         # Ensure that StormpathView.accept_header is properly set.
         with self.app.test_client() as c:
             # Create a request with html accept header
@@ -200,16 +215,15 @@ class TestHelperMethods(StormpathViewTestCase):
                     self.view.accept_header,
                     self.app.config['stormpath']['web']['produces'][0])
 
-            # Ensure that an invalid accept header type will return a 406.
+            # Ensure that an invalid accept header type will return None.
             self.app.wsgi_app = HttpAcceptWrapper(
                 self.default_wsgi_app, 'text/plain')
             c.get('/')
             with self.app.app_context():
-                with self.assertRaises(HTTPException) as http_error:
-                    self.view.__init__(self.config)
-                    self.assertEqual(http_error.exception.code, 406)
+                self.view.__init__(self.config)
+                self.assertEqual(self.view.accept_header, None)
 
-    def test_accept_header(self):
+    def test_accept_header_valid(self):
         # Ensure that StormpathView.accept_header is properly set.
         with self.app.test_client() as c:
             # Create a request with html accept header
@@ -218,6 +232,7 @@ class TestHelperMethods(StormpathViewTestCase):
             with self.app.app_context():
                 view = StormpathView(self.config)
                 self.assertEqual(view.accept_header, 'text/html')
+                self.assertFalse(view.invalid_request)
 
             # Create a request with json accept header
             self.app.wsgi_app = HttpAcceptWrapper(
@@ -227,18 +242,44 @@ class TestHelperMethods(StormpathViewTestCase):
             with self.app.app_context():
                 view = StormpathView(self.config)
                 self.assertEqual(view.accept_header, 'application/json')
+                self.assertFalse(view.invalid_request)
 
+    def test_accept_header_invalid(self):
+        # If a request type is not HTML, JSON, */* or empty, request is
+        # deemed invalid and is passed to the developer to handle the response.
+        # The developer handles the response via uri specified in the config
+        # file, in:
+        #    web > invalidRequest.
+        with self.app.test_client() as c:
             # Create a request with an accept header not supported by
             # flask_stormpath.
             self.app.wsgi_app = HttpAcceptWrapper(
                 self.default_wsgi_app, 'text/plain')
-            c.get('/')
+            # We'll use login since '/' is not an implemented route.
+            response = c.get('/login')
 
+            # Ensure that accept header and invalid_request are properly set.
             with self.app.app_context():
-                with self.assertRaises(NotAcceptable) as error:
-                    view = StormpathView(self.config)
-                    self.assertEqual(error.exception.name, 'Not Acceptable')
-                    self.assertEqual(error.exception.code, 406)
+                view = StormpathView(self.config)
+                self.assertEqual(view.accept_header, None)
+                self.assertTrue(view.invalid_request)
+
+            # If a view for 'invalid_request' uri is implemented, the response
+            # is determined in that view. (We've implemented that as our
+            # InvalidRequestView).
+            response = c.get('/login', follow_redirects=True)
+            self.assertEqual(response.status, '400 BAD REQUEST')
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.content_type, 'text/xml; charset=utf-8')
+
+            # If view for that uri is not implemented, the response is 501.
+            self.app.config[
+                'stormpath']['web']['invalidRequest']['uri'] = None
+            response = c.get('/login', follow_redirects=True)
+
+            self.assertEqual(response.status, '501 NOT IMPLEMENTED')
+            self.assertEqual(response.status_code, 501)
+            self.assertEqual(response.content_type, 'text/html')
 
 
 class TestRegister(StormpathViewTestCase):

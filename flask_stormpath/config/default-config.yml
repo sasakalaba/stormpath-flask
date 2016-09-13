@@ -41,7 +41,9 @@ stormpath:
     # requests.  If a requested type is not in this list, the Stormpath
     # integration should pass on the request, and allow the developer or base
     # framework to handle the response.
-    #
+    invalidRequest:
+      uri: "/invalid_request"
+
     # If the request does not specify an Accept header, or the preferred content
     # type is */*, the Stormpath integration will respond with the first type in
     # this list.
