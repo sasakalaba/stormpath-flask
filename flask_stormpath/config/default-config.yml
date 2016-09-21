@@ -125,7 +125,19 @@ stormpath:
       enabled: null
       uri: "/verify"
       nextUri: "/login?status=verified"
+      errorUri: "/login?status=unverified"
       view: "verify"
+      form:
+        fields:
+          email:
+            enabled: true
+            visible: true
+            label: "Email"
+            placeholder: "Email"
+            required: true
+            type: "email"
+        fieldOrder:
+          - "email"
 
     login:
       enabled: true

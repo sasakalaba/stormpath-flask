@@ -33,6 +33,7 @@ from .views import (
     LoginView,
     ForgotPasswordView,
     ChangePasswordView,
+    VerifyEmailView,
     LogoutView,
     MeView,
     GoogleLoginView,
@@ -305,16 +306,18 @@ class StormpathManager(object):
                 "application. A default account store is required for "
                 "registration.")
 
-        if all([config['stormpath']['web']['register']['autoLogin'],
-                config['stormpath']['web']['verifyEmail']['enabled']]):
-            raise ConfigurationError(
-                "Invalid configuration: stormpath.web.register.autoLogin "
-                "is true, but the default account store of the "
-                "specified application has the email verification "
-                "workflow enabled. Auto login is only possible if email "
-                "verification is disabled. "
-                "Please disable this workflow on this application's default "
-                "account store.")
+        # FIXME: this obstructs the verifyEmail view, so it will be commented
+        # out for now.
+        # if all([config['stormpath']['web']['register']['autoLogin'],
+        #         config['stormpath']['web']['verifyEmail']['enabled']]):
+        #     raise ConfigurationError(
+        #         "Invalid configuration: stormpath.web.register.autoLogin "
+        #         "is true, but the default account store of the "
+        #         "specified application has the email verification "
+        #         "workflow enabled. Auto login is only possible if email "
+        #         "verification is disabled. "
+        #         "Please disable this workflow on this application's default "
+        #         "account store.")
 
         if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(
                 config['STORMPATH_COOKIE_DOMAIN'], str):
@@ -408,6 +411,14 @@ class StormpathManager(object):
                 methods=['GET', 'POST'],
             )
 
+        if app.config['stormpath']['web']['verifyEmail']['enabled']:
+            app.add_url_rule(
+                app.config['stormpath']['web']['verifyEmail']['uri'],
+                'stormpath.verify',
+                VerifyEmailView.as_view('verify'),
+                methods=['GET', 'POST'],
+            )
+
         if app.config['stormpath']['web']['logout']['enabled']:
             app.add_url_rule(
                 os.path.join(
@@ -426,13 +437,6 @@ class StormpathManager(object):
                 'stormpath.me',
                 MeView.as_view('me'),
             )
-
-        # if app.config['stormpath']['web']['verifyEmail']['enabled']:
-        #     app.add_url_rule(
-        #         app.config['stormpath']['web']['verifyEmail']['uri'],
-        #         'stormpath.verify',
-        #         verify,
-        #     )
 
         if app.config['STORMPATH_ENABLE_GOOGLE']:
             app.add_url_rule(

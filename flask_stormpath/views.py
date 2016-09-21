@@ -173,12 +173,17 @@ class RegisterView(StormpathView):
 
         # Create the user account on Stormpath.  If this fails, an
         # exception will be raised.
-
         account = User.create(**self.data)
+
+        # If verifyEmail is enabled, send a verification email.
+        # FIXME: Edit templates to show a verification email has been sent.
+        # FIXME: error message is None
+        pass
+
         # If we're able to successfully create the user's account,
         # we'll log the user in (creating a secure session using
         # Flask-Login), then redirect the user to the
-        # Stormpath login nextUri setting but only if autoLogin.
+        # Stormpath login nextUri setting but only if autoLogin is enabled.
         if (self.config['autoLogin'] and not current_app.config[
                 'stormpath']['web']['verifyEmail']['enabled']):
             login_user(account, remember=True)
@@ -339,6 +344,108 @@ class ChangePasswordView(StormpathView):
         return self.make_stormpath_response(
             template=self.template_success, data={'form': self.form},
             return_json=False)
+
+
+class VerifyEmailView(StormpathView):
+    """
+    Verify a newly created Stormpath user.
+
+    This view will activate a user's account with the token specified in the
+    activation link the user received via email. If the token is invalid or
+    missing, the user can request a new activation link.
+
+    The URL this view is bound to, and the template that is used to render
+    this page can all be controlled via Flask-Stormpath settings.
+    """
+    template = "flask_stormpath/verify_email.html"
+
+    def __init__(self, *args, **kwargs):
+        config = current_app.config['stormpath']['web']['verifyEmail']
+        super(VerifyEmailView, self).__init__(config, *args, **kwargs)
+
+    def process_stormpath_error(self, error):
+        # If the error message contains 'https', it means something
+        # failed on the network (network connectivity, most likely).
+        if (isinstance(error.message, string_types) and
+                'https' in error.message.lower()):
+            error.user_message = 'Something went wrong! Please try again.'
+        return super(VerifyEmailView, self).process_stormpath_error(error)
+
+    def dispatch_request(self):
+        # If the request is POST, resend the confirmation email.
+        if request.method == 'POST':
+            # If form.data is not valid, return error messages.
+            if not self.form.validate_on_submit():
+                if self.request_wants_json:
+                    return self.make_stormpath_response(
+                        data=json.dumps({
+                            'status': 400,
+                            'message': self.form.errors}),
+                        status_code=400)
+                for field_error in self.form.errors.keys():
+                    flash(self.form.errors[field_error][0])
+                redirect_url = request.url
+            else:
+                email = request.form.get('email')
+                account = (
+                    current_app.stormpath_manager.client.tenant.accounts.
+                    search(email).items[0])
+
+                # Resend the activation token
+                (current_app.stormpath_manager.application.
+                    verification_emails.resend(account, account.directory))
+
+                if self.request_wants_json:
+                        return self.make_stormpath_response(json.dumps({}))
+                redirect_url = self.config['errorUri']
+
+        # If the request is GET, try to parse and verify the authorization
+        # token.
+        else:
+            verification_token = request.args.get('sptoken', '')
+            try:
+                # Try to verify the sptoken.
+                account = (
+                    current_app.stormpath_manager.client.accounts.
+                    verify_email_token(verification_token)
+                )
+                account.__class__ = User
+
+                # If autologin is enabled, log the user in and redirect him
+                # to login nextUri. If not, redirect to verifyEmail nextUri.
+                if current_app.config[
+                        'stormpath']['web']['register']['autoLogin']:
+                    login_user(account, remember=True)
+                    redirect_url = current_app.config[
+                        'stormpath']['web']['login']['nextUri']
+                else:
+                    if self.request_wants_json:
+                        return self.make_stormpath_response(json.dumps({}))
+                    redirect_url = self.config['nextUri']
+
+            except StormpathError as error:
+                # If the sptoken is invalid or missing, render an email
+                # form that will resend an sptoken to the new email provided.
+
+                if self.request_wants_json:
+                    if error.status == 400:
+                        error.message[
+                            'message'] = 'sptoken parameter not provided.'
+
+                    return self.make_stormpath_response(
+                        data=json.dumps({
+                            'status': error.status,
+                            'message': error.message['message']}),
+                        status_code=400)
+
+                return self.make_stormpath_response(
+                    template=self.template, data={'form': self.form},
+                    return_json=False)
+
+        # Set redirect priority
+        if not redirect_url:
+            redirect_url = '/'
+        return redirect(redirect_url)
 
 
 class LogoutView(StormpathView):

@@ -6,7 +6,7 @@ from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from flask_stormpath.views import (
-    StormpathView, FacebookLoginView, GoogleLoginView, View)
+    StormpathView, FacebookLoginView, GoogleLoginView, VerifyEmailView, View)
 from flask import session, url_for, Response
 from flask.ext.login import current_user
 from werkzeug.exceptions import BadRequest
@@ -944,6 +944,8 @@ class TestChange(StormpathViewTestCase):
         # Generate a token
         self.token = self.application.password_reset_tokens.create(
             {'email': 'r@rdegges.com'}).token
+
+        # Specify url for json
         self.reset_password_url = ''.join(['change?sptoken=', self.token])
 
     def test_proper_template_rendering(self):
@@ -1092,6 +1094,179 @@ class TestChange(StormpathViewTestCase):
         self.assertJsonResponse(
             'post', self.reset_password_url, 400,
             json.dumps(expected_response), **request_kwargs)
+
+
+class TestVerify(StormpathViewTestCase):
+    """ Test our verify view. """
+
+    def setUp(self):
+        super(TestVerify, self).setUp()
+        # We need to set form fields to test out json stuff in the
+        # assertJsonResponse method.
+        self.form_fields = self.app.config['stormpath']['web'][
+            'verifyEmail']['form']['fields']
+
+        # Set our verify route (by default is missing)
+        self.app.add_url_rule(
+            self.app.config['stormpath']['web']['verifyEmail']['uri'],
+            'stormpath.verify',
+            VerifyEmailView.as_view('verify'),
+            methods=['GET', 'POST'],
+        )
+
+        # Enable verification flow.
+        self.directory = self.client.directories.search(self.name).items[0]
+        account_policy = self.directory.account_creation_policy
+        account_policy.verification_email_status = 'ENABLED'
+        account_policy.save()
+
+        # Create a new account
+        with self.app.app_context():
+            user = User.create(
+                username='rdegges_verify',
+                given_name='Randall',
+                surname='Degges',
+                email='r@verify.com',
+                password='woot1LoveCookies!',
+            )
+        self.account = user.tenant.accounts.search(user.email)[0]
+
+        # Specify url for json
+        self.verify_url = ''.join([
+            'verify?sptoken=', self.get_verification_token()])
+
+    def get_verification_token(self):
+        self.account.refresh()
+        return self.account.email_verification_token.href.split('/')[-1]
+
+    def test_enabled(self):
+        # FIXME: Read the specs for a more detailed explanation.
+        self.fail('')
+
+    def test_error_messages(self):
+        self.fail('')
+
+    def test_verify_token_valid(self):
+        # Setting redirect URL to something that is easy to check
+        stormpath_verify_redirect_url = '/redirect_for_verify'
+        (self.app.config['stormpath']['web']['verifyEmail']
+            ['nextUri']) = stormpath_verify_redirect_url
+
+        # Get activation token
+        sptoken = self.get_verification_token()
+
+        # Ensure that a proper verify token will activate a user's account.
+        with self.app.test_client() as c:
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 302)
+
+            # Ensure proper redirection if autologin is disabled
+            location = resp.headers.get('location')
+            self.assertTrue(stormpath_verify_redirect_url in location)
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'ENABLED')
+
+    def test_verify_token_invalid(self):
+        # Set invalid activation token
+        sptoken = 'foobar'
+
+        # Ensure that a proper verify token will activate a user's account.
+        with self.app.test_client() as c:
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'This verification link is no longer valid.' in
+                resp.data.decode('utf-8'))
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'UNVERIFIED')
+
+    def test_verify_token_missing(self):
+        # Set missing activation token
+        sptoken = None
+
+        # Ensure that a proper verify token will activate a user's account.
+        with self.app.test_client() as c:
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'This verification link is no longer valid.' in
+                resp.data.decode('utf-8'))
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'UNVERIFIED')
+
+    def test_resend_verification_token(self):
+        # Get current activation token
+        sptoken = self.get_verification_token()
+
+        with self.app.test_client() as c:
+            # Activate the account
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 302)
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'ENABLED')
+
+            # Set the account back to 'UNVERIFIED'
+            self.account.status = 'UNVERIFIED'
+            self.account.save()
+            self.account.refresh()
+
+            # Submit a form that will resend a new activation token
+            resp = c.post('/verify', data={'email': 'r@verify.com'})
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(
+                'You should be redirected automatically to target URL: ' +
+                '<a href="%s">' % self.app.config[
+                    'stormpath']['web']['verifyEmail']['errorUri'] +
+                '/login?status=unverified</a>.' in
+                resp.data.decode('utf-8'))
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'UNVERIFIED')
+
+            # Make sure that a new token has replaced the old one
+            new_sptoken = self.get_verification_token()
+            self.assertNotEqual(sptoken, new_sptoken)
+
+            # Activate an account with a new token
+            resp = c.get('/verify', query_string={'sptoken': new_sptoken})
+            self.assertEqual(resp.status_code, 302)
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'ENABLED')
+
+    def test_autologin_true(self):
+        # Set autologin to true
+        self.app.config['stormpath']['web']['register']['autoLogin'] = True
+
+        # Setting redirect URL to something that is easy to check
+        stormpath_login_redirect_url = '/redirect_for_login'
+        (self.app.config['stormpath']['web']['login']
+            ['nextUri']) = stormpath_login_redirect_url
+
+        # Get activation token
+        sptoken = self.get_verification_token()
+
+        # Ensure that a proper verify token will activate a user's account.
+        with self.app.test_client() as c:
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 302)
+            location = resp.headers.get('location')
+            self.assertTrue(stormpath_login_redirect_url in location)
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'ENABLED')
+
+    def test_verify_token_valid_json(self):
+        self.fail('')
+
+    def test_json_response_post(self):
+        self.fail('')
+
+    def test_json_response_valid_form(self):
+        self.fail('')
+
+    def test_json_response_form_error(self):
+        self.fail('')
+
+    def test_json_response_stormpath_error(self):
+        self.fail('')
 
 
 class TestMe(StormpathViewTestCase):

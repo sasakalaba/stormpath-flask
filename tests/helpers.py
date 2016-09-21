@@ -32,7 +32,8 @@ class StormpathTestCase(TestCase):
     def setUp(self):
         """Provision a new Client, Application, and Flask app."""
         self.client = bootstrap_client()
-        self.application = bootstrap_app(self.client)
+        self.name = 'flask-stormpath-tests-%s' % uuid4().hex
+        self.application = bootstrap_app(self.client, self.name)
         self.app = bootstrap_flask_app(self.application)
         self.manager = StormpathManager(self.app)
 
@@ -171,7 +172,7 @@ def bootstrap_client():
     )
 
 
-def bootstrap_app(client):
+def bootstrap_app(client, name):
     """
     Create a new, uniquely named, Stormpath Application.
 
@@ -187,7 +188,7 @@ def bootstrap_app(client):
     :returns: A new Stormpath Application, fully initialized.
     """
     return client.applications.create({
-        'name': 'flask-stormpath-tests-%s' % uuid4().hex,
+        'name': name,
         'description': 'This application is ONLY used for testing the ' +
         'Flask-Stormpath library. Please do not use this for anything ' +
         'serious.',
@@ -241,7 +242,7 @@ def destroy_resources(app, client):
 
 # Create resources needed for validation.
 client = bootstrap_client()
-app = bootstrap_app(client)
+app = bootstrap_app(client, 'flask-stormpath-test-social')
 flask_app = bootstrap_flask_app(app)
 
 # Validate credentials.
