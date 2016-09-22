@@ -84,7 +84,7 @@ class StormpathView(View):
         if self.request_wants_json:
             status_code = error.status if error.status else 400
             return self.make_stormpath_response(
-                json.dumps({
+                data=json.dumps({
                     'status': status_code,
                     'message': error.user_message}),
                 status_code=status_code)
@@ -396,7 +396,8 @@ class VerifyEmailView(StormpathView):
                     verification_emails.resend(account, account.directory))
 
                 if self.request_wants_json:
-                        return self.make_stormpath_response(json.dumps({}))
+                        return self.make_stormpath_response(
+                            data=json.dumps({}))
                 redirect_url = self.config['errorUri']
 
         # If the request is GET, try to parse and verify the authorization
@@ -420,7 +421,8 @@ class VerifyEmailView(StormpathView):
                         'stormpath']['web']['login']['nextUri']
                 else:
                     if self.request_wants_json:
-                        return self.make_stormpath_response(json.dumps({}))
+                        return self.make_stormpath_response(
+                            data=json.dumps({}))
                     redirect_url = self.config['nextUri']
 
             except StormpathError as error:
