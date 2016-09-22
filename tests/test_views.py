@@ -24,6 +24,29 @@ class StormpathViewTestCase(StormpathTestCase):
     def check_header(self, st, headers):
         return any(st in header for header in headers)
 
+    def assertFormSettings(self, expected_fields):
+        """
+        Expected response set in json tests is based on the default settings
+        specified in the config file. This method ensures that the developer
+        didn't change the config file before running tests.
+        """
+
+        # Build form fields from the config and compare them to those
+        # specified in the expected response.
+        form_fields = []
+        for key in self.form_fields.keys():
+            field = self.form_fields[key].copy()
+
+            # Convert fields from config to json response format.
+            if field['enabled']:
+                field.pop('enabled')
+                field['name'] = Resource.from_camel_case(key)
+                form_fields.append(field)
+
+        # Sort and compare form fields
+        form_fields.sort(), expected_fields.sort()
+        self.assertEqual(form_fields, expected_fields)
+
     def assertJsonResponse(
             self, method, view, status_code, expected_response,
             user_to_json=False, **kwargs):
@@ -60,55 +83,26 @@ class StormpathViewTestCase(StormpathTestCase):
             self.assertTrue(self.check_header(
                 'application/json', resp.headers[0]))
 
-            # Check that response data is correct.
-            if method == 'get':
-                # If method is get, ensure that response data is the json
-                # representation of form field settings.
-
-                # Build form fields from the response and compare them to form
-                # fields specified in the config file.
-                resp_data = json.loads(resp.data)
-                form_fields = {}
-                for field in resp_data:
-                    field['enabled'] = True
-                    form_fields[Resource.to_camel_case(
-                        field.pop('name'))] = field
-
-                # Remove disabled fields
-                for key in self.form_fields.keys():
-                    if not self.form_fields[key]['enabled']:
-                        self.form_fields.pop(key)
-
-                # Ensure that form field specifications from json response are
-                # the same as in the config file.
-                self.assertEqual(self.form_fields, form_fields)
-
-            else:
-                # If method is post, ensure that either account info or
-                # stormpath error is returned.
-                self.assertTrue('data' in kwargs.keys())
-
             # If we're comparing json response with account info,  make sure
             # that the following values are present in the response and pop
             # them, since we cannot predetermine these values in our expected
             # response.
             if user_to_json:
-                resp_data = json.loads(resp.data)
+                request_response = json.loads(resp.data)
                 undefined_data = ('href', 'modified_at', 'created_at')
                 self.assertTrue(
-                    all(key in resp_data['account'].keys()
+                    all(key in request_response['account'].keys()
                         for key in undefined_data))
                 for key in undefined_data:
-                    resp_data['account'].pop(key)
-                expected_response = json.loads(expected_response)
-
-                # Ensure that response data is the same as the expected data.
-                self.assertEqual(resp_data, expected_response)
-
+                    request_response['account'].pop(key)
             else:
-                # Ensure that response data is the same as the expected data.
-                self.assertEqual(
-                    json.loads(resp.data), json.loads(expected_response))
+                request_response = json.loads(resp.data)
+
+        # Convert responses to dicts, sort them if necessary, and compare.
+        expected_response = json.loads(expected_response)
+        if hasattr(request_response, 'sort'):
+            request_response.sort(), expected_response.sort()
+        self.assertEqual(request_response, expected_response)
 
 
 class TestHelperMethods(StormpathViewTestCase):
@@ -557,6 +551,10 @@ class TestRegister(StormpathViewTestCase):
              'visible': True,
              'type': 'password'}]
 
+        # Ensure that the form fields specified in the expected response
+        # match those specified in the config file.
+        self.assertFormSettings(expected_response)
+
         self.assertJsonResponse(
             'get', 'register', 200, json.dumps(expected_response))
 
@@ -713,6 +711,10 @@ class TestLogin(StormpathViewTestCase):
              'visible': True,
              'type': 'password'}]
 
+        # Ensure that the form fields specified in the expected response
+        # match those specified in the config file.
+        self.assertFormSettings(expected_response)
+
         self.assertJsonResponse(
             'get', 'login', 200, json.dumps(expected_response))
 
@@ -820,6 +822,10 @@ class TestLogout(StormpathViewTestCase):
              'visible': True,
              'type': 'password'}]
 
+        # Ensure that the form fields specified in the expected response
+        # match those specified in the config file.
+        self.assertFormSettings(expected_response)
+
         self.assertJsonResponse(
             'get', 'logout', 302, json.dumps(expected_response))
 
@@ -878,6 +884,10 @@ class TestForgot(StormpathViewTestCase):
              'required': True,
              'visible': True,
              'type': 'email'}]
+
+        # Ensure that the form fields specified in the expected response
+        # match those specified in the config file.
+        self.assertFormSettings(expected_response)
 
         self.assertJsonResponse(
             'get', 'forgot', 200, json.dumps(expected_response))
@@ -1029,6 +1039,10 @@ class TestChange(StormpathViewTestCase):
              'required': True,
              'visible': True,
              'type': 'password'}]
+
+        # Ensure that the form fields specified in the expected response
+        # match those specified in the config file.
+        self.assertFormSettings(expected_response)
 
         self.assertJsonResponse(
             'get', self.reset_password_url, 200, json.dumps(expected_response))
