@@ -386,14 +386,17 @@ class VerifyEmailView(StormpathView):
                     flash(self.form.errors[field_error][0])
                 redirect_url = request.url
             else:
-                email = request.form.get('email')
-                account = (
+                # Try to retrieve an account associated with the email.
+                search_query = (
                     current_app.stormpath_manager.client.tenant.accounts.
-                    search(email).items[0])
+                    search(self.form.data.get('email')))
 
-                # Resend the activation token
-                (current_app.stormpath_manager.application.
-                    verification_emails.resend(account, account.directory))
+                if search_query.items:
+                    account = search_query.items[0]
+
+                    # Resend the activation token
+                    (current_app.stormpath_manager.application.
+                        verification_emails.resend(account, account.directory))
 
                 if self.request_wants_json:
                         return self.make_stormpath_response(
@@ -417,6 +420,10 @@ class VerifyEmailView(StormpathView):
                 if current_app.config[
                         'stormpath']['web']['register']['autoLogin']:
                     login_user(account, remember=True)
+                    account.refresh()
+                    if self.request_wants_json:
+                        return self.make_stormpath_response(
+                            data=account.to_json())
                     redirect_url = current_app.config[
                         'stormpath']['web']['login']['nextUri']
                 else:
@@ -431,14 +438,13 @@ class VerifyEmailView(StormpathView):
 
                 if self.request_wants_json:
                     if error.status == 400:
-                        error.message[
-                            'message'] = 'sptoken parameter not provided.'
+                        error.user_message = 'sptoken parameter not provided.'
 
                     return self.make_stormpath_response(
                         data=json.dumps({
                             'status': error.status,
-                            'message': error.message['message']}),
-                        status_code=400)
+                            'message': error.user_message}),
+                        status_code=error.status)
 
                 return self.make_stormpath_response(
                     template=self.template, data={'form': self.form},

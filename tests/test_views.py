@@ -1150,17 +1150,17 @@ class TestVerify(StormpathViewTestCase):
             'verify?sptoken=', self.get_verification_token()])
 
     def get_verification_token(self):
+        # Retrieves an email verification token.
         self.account.refresh()
-        return self.account.email_verification_token.href.split('/')[-1]
-
-    def test_enabled(self):
-        # FIXME: Read the specs for a more detailed explanation.
-        self.fail('')
-
-    def test_error_messages(self):
-        self.fail('')
+        if self.account.email_verification_token:
+            return self.account.email_verification_token.href.split('/')[-1]
+        return None
 
     def test_verify_token_valid(self):
+        # Ensure that a valid token will activate a users account. By default,
+        # autologin is set to false, so the response should be a redirect
+        # to verifyEmail next uri.
+
         # Setting redirect URL to something that is easy to check
         stormpath_verify_redirect_url = '/redirect_for_verify'
         (self.app.config['stormpath']['web']['verifyEmail']
@@ -1181,6 +1181,9 @@ class TestVerify(StormpathViewTestCase):
             self.assertEqual(self.account.status, 'ENABLED')
 
     def test_verify_token_invalid(self):
+        # If the verification token is invalid, render a template with a form
+        # used to resend an activation token.
+
         # Set invalid activation token
         sptoken = 'foobar'
 
@@ -1195,6 +1198,9 @@ class TestVerify(StormpathViewTestCase):
             self.assertEqual(self.account.status, 'UNVERIFIED')
 
     def test_verify_token_missing(self):
+        # If the verification token is missing, render a template with a form
+        # used to resend an activation token.
+
         # Set missing activation token
         sptoken = None
 
@@ -1209,6 +1215,9 @@ class TestVerify(StormpathViewTestCase):
             self.assertEqual(self.account.status, 'UNVERIFIED')
 
     def test_resend_verification_token(self):
+        # Ensure that submitting an email form will generate a new activation
+        # token. Make sure that a redirect uri will have an unverified status.
+
         # Get current activation token
         sptoken = self.get_verification_token()
 
@@ -1246,7 +1255,46 @@ class TestVerify(StormpathViewTestCase):
             self.account.refresh()
             self.assertEqual(self.account.status, 'ENABLED')
 
+    def test_resend_verification_token_unassociated_email(self):
+        # Ensure that submitting an unassociated  email form will not
+        # generate a new activation token. Make sure that a redirect uri will
+        # still have an unverified status.
+
+        # Get current activation token
+        sptoken = self.get_verification_token()
+
+        with self.app.test_client() as c:
+            # Activate the account
+            resp = c.get('/verify', query_string={'sptoken': sptoken})
+            self.assertEqual(resp.status_code, 302)
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'ENABLED')
+
+            # Set the account back to 'UNVERIFIED'
+            self.account.status = 'UNVERIFIED'
+            self.account.save()
+            self.account.refresh()
+
+            # Submit a form with an unassociated email
+            resp = c.post('/verify', data={'email': 'doesnot@exist.com'})
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(
+                'You should be redirected automatically to target URL: ' +
+                '<a href="%s">' % self.app.config[
+                    'stormpath']['web']['verifyEmail']['errorUri'] +
+                '/login?status=unverified</a>.' in
+                resp.data.decode('utf-8'))
+            self.account.refresh()
+            self.assertEqual(self.account.status, 'UNVERIFIED')
+
+            # Make sure that a new token was not generated
+            new_sptoken = self.get_verification_token()
+            self.assertIsNone(new_sptoken)
+
     def test_autologin_true(self):
+        # Ensure that the enabled autologin will log a user in and redirect
+        # him user to the uri specified in the login > nextUri.
+
         # Set autologin to true
         self.app.config['stormpath']['web']['register']['autoLogin'] = True
 
@@ -1267,20 +1315,245 @@ class TestVerify(StormpathViewTestCase):
             self.account.refresh()
             self.assertEqual(self.account.status, 'ENABLED')
 
+    def test_response_form_error_missing(self):
+        # Ensure that a missing email will render a proper error.
+        # Get current activation token
+        with self.app.test_client() as c:
+            resp = c.post('/verify', data={}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue('Email is required.' in resp.data.decode('utf-8'))
+
+    def test_response_form_error_invalid(self):
+        # Ensure that an invalid email will render a proper error.
+        with self.app.test_client() as c:
+            resp = c.post(
+                '/verify', data={'email': 'foobar'}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Email must be in valid format.' in resp.data.decode('utf-8'))
+
     def test_verify_token_valid_json(self):
-        self.fail('')
+        # Ensure that a valid token will activate a users account. By default,
+        # autologin is set to false, so the response should be an empty body
+        # with 200 status code.
 
-    def test_json_response_post(self):
-        self.fail('')
+        # Specify expected response.
+        expected_response = {}
 
-    def test_json_response_valid_form(self):
-        self.fail('')
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.verify_url, 200, json.dumps(expected_response))
 
-    def test_json_response_form_error(self):
-        self.fail('')
+    def test_verify_token_invalid_json(self):
+        # If the verification token is invalid, return an error from the
+        # REST API.
 
-    def test_json_response_stormpath_error(self):
-        self.fail('')
+        # Set an invalid token
+        self.verify_url = 'verify?sptoken=foobar'
+
+        # Specify expected response.
+        expected_response = {
+            'status': 404,
+            'message': 'The requested resource does not exist.'
+        }
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.verify_url, 404, json.dumps(expected_response))
+
+    def test_verify_token_missing_json(self):
+        # If the verification token is missing, respond with our custom
+        # message and a 400 status code.
+
+        # Specify expected response.
+        expected_response = {
+            'status': 400,
+            'message': 'sptoken parameter not provided.'
+        }
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', 'verify', 400, json.dumps(expected_response))
+
+    def test_resend_verification_token_json(self):
+        # Ensure that submitting an email form will generate a new activation
+        # token. Response should be an empty body with a 200 status code.
+
+        # First we will activate the account
+
+        # Specify expected response.
+        expected_response = {}
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.verify_url, 200, json.dumps(expected_response))
+
+        # Ensure that the account is enabled
+        self.account.refresh()
+        self.assertEqual(self.account.status, 'ENABLED')
+
+        # Set the account back to 'UNVERIFIED'
+        self.account.status = 'UNVERIFIED'
+        self.account.save()
+        self.account.refresh()
+
+        # Submit a form that will resend a new activation token
+
+        # Specify expected response.
+        expected_response = {}
+
+        # Post data
+        json_data = json.dumps({'email': 'r@verify.com'})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'
+        }
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'post', 'verify', 200, json.dumps(expected_response),
+            **request_kwargs)
+
+        # Ensure that the account is still unverified.
+        self.account.refresh()
+        self.assertEqual(self.account.status, 'UNVERIFIED')
+
+        # Retrieve a newly generated token
+        self.new_verify_url = ''.join([
+            'verify?sptoken=', self.get_verification_token()])
+        self.assertNotEqual(self.verify_url, self.new_verify_url)
+
+        # Activate an account with a new token
+
+        # Specify expected response.
+        expected_response = {}
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.new_verify_url, 200, json.dumps(expected_response))
+
+        # Ensure that the account is now enabled
+        self.account.refresh()
+        self.assertEqual(self.account.status, 'ENABLED')
+
+    def test_resend_verification_token_unassociated_email_json(self):
+        # Ensure that submitting an unassociated  email form will not
+        # generate a new activation token. Make sure that response will still
+        # be an empty body with a 200 status code.
+
+        # First we will activate the account
+
+        # Specify expected response.
+        expected_response = {}
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.verify_url, 200, json.dumps(expected_response))
+
+        # Ensure that the account is enabled
+        self.account.refresh()
+        self.assertEqual(self.account.status, 'ENABLED')
+
+        # Set the account back to 'UNVERIFIED'
+        self.account.status = 'UNVERIFIED'
+        self.account.save()
+        self.account.refresh()
+
+        # Submit a form that will resend a new activation token
+
+        # Specify expected response.
+        expected_response = {}
+
+        # Post data
+        json_data = json.dumps({'email': 'doesnot@exist.com'})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'
+        }
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'post', 'verify', 200, json.dumps(expected_response),
+            **request_kwargs)
+
+        # Ensure that the account is still unverified.
+        self.account.refresh()
+        self.assertEqual(self.account.status, 'UNVERIFIED')
+
+        # Make sure that a new token was not generated
+        new_sptoken = self.get_verification_token()
+        self.assertIsNone(new_sptoken)
+
+    def test_autologin_true_json(self):
+        # Ensure that the enabled autologin will log a user in and return an
+        # account json response.
+
+        # Set autologin to true
+        self.app.config['stormpath']['web']['register']['autoLogin'] = True
+
+        # Specify expected response.
+        expected_response = {'account': {
+            'username': 'rdegges_verify',
+            'email': 'r@verify.com',
+            'given_name': 'Randall',
+            'middle_name': None,
+            'surname': 'Degges',
+            'full_name': 'Randall Degges',
+            'status': 'ENABLED'}
+        }
+
+        # Check the json response.
+        self.assertJsonResponse(
+            'get', self.verify_url, 200, json.dumps(expected_response),
+            user_to_json=True)
+
+    def test_response_form_error_missing_json(self):
+        # Ensure that a missing email will render a proper error.
+
+        # Specify expected response
+        expected_response = {
+            'message': {"email": ["Email is required."]},
+            'status': 400}
+
+        # Post data
+        json_data = json.dumps({})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'
+        }
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
+        # Check the json response-
+        self.assertJsonResponse(
+            'post', 'verify', 400, json.dumps(expected_response),
+            **request_kwargs)
+
+    def test_response_form_error_invalid_json(self):
+        # Ensure that an invalid email will render a proper error.
+
+        # Specify expected response
+        expected_response = {
+            'message': {"email": ["Email must be in valid format."]},
+            'status': 400}
+
+        # Post data
+        json_data = json.dumps({'email': 'foobar'})
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'
+        }
+
+        request_kwargs = {
+            'data': json_data,
+            'content_type': 'application/json'}
+
+        # Check the json response-
+        self.assertJsonResponse(
+            'post', 'verify', 400, json.dumps(expected_response),
+            **request_kwargs)
 
 
 class TestMe(StormpathViewTestCase):
