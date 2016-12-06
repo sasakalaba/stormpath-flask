@@ -242,7 +242,7 @@ def destroy_resources(app, client):
 
 # Create resources needed for validation.
 client = bootstrap_client()
-app = bootstrap_app(client, 'flask-stormpath-test-social')
+app = bootstrap_app(client, 'flask-stormpath-test-social-%s' % uuid4().hex)
 flask_app = bootstrap_flask_app(app)
 
 # Validate credentials.
