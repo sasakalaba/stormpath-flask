@@ -211,10 +211,8 @@ class SocialMethodsTestMixin(object):
 
         # Set our error message
         self.error_message = (
-            'Stormpath was not able to complete the request to ' +
-            '{0}: this can be caused by either a bad {0} ' +
-            'Directory configuration, or the provided Account ' +
-            'credentials are not valid').format(self.social_name.title())
+            'Stormpath was not able to complete the request to %s:'
+            % self.social_name.title())
 
     @property
     def social_dir_name(self):
@@ -249,7 +247,7 @@ class SocialMethodsTestMixin(object):
                     'foobar', 'mocked access token', self.provider)
 
             self.assertEqual(
-                error.exception.message, 'Social service is not supported.')
+                str(error.exception), 'Social service is not supported.')
 
     @patch('stormpath.resources.application.Application.get_provider_account')
     def test_from_social_valid(self, user_mock):
@@ -305,8 +303,7 @@ class SocialMethodsTestMixin(object):
             with self.assertRaises(StormpathError) as error:
                 self.user_from_social('foobar')
 
-            self.assertTrue(
-                self.error_message in error.exception.developer_message)
+            self.assertTrue(self.error_message in str(error.exception))
 
     def test_from_social_invalid_access_token_with_existing_directory(self):
         # First we will create a social directory if one doesn't already
@@ -338,8 +335,7 @@ class SocialMethodsTestMixin(object):
             with self.assertRaises(StormpathError) as error:
                 self.user_from_social('foobar')
 
-            self.assertTrue(
-                self.error_message in error.exception.developer_message)
+            self.assertTrue(self.error_message in str(error.exception))
 
 
 class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):

@@ -63,6 +63,13 @@ class StormpathTestCase(TestCase):
         """Destroy all provisioned Stormpath resources."""
         destroy_resources(self.application, self.client)
 
+    def assertDictList(self, list1, list2, key_name):
+        # Sorts list of dictionaries by key name and compares them.
+
+        sorted_list1 = sorted(list1, key=lambda k: k[key_name])
+        sorted_list2 = sorted(list2, key=lambda k: k[key_name])
+        self.assertEqual(sorted_list1, sorted_list2)
+
 
 class SignalReceiver(object):
     received_signals = None

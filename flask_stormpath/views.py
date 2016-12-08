@@ -2,6 +2,7 @@
 
 
 import json
+import sys
 from flask import (
     abort,
     current_app,
@@ -81,14 +82,19 @@ class StormpathView(View):
 
     def process_stormpath_error(self, error):
         """ Check for StormpathErrors. """
+
+        # Sets an error message.
+        error_message = (
+            error.user_message if error.user_message else error.message)
+
         if self.request_wants_json:
             status_code = error.status if error.status else 400
             return self.make_stormpath_response(
                 data=json.dumps({
                     'status': status_code,
-                    'message': error.user_message}),
+                    'message': error_message}),
                 status_code=status_code)
-        flash(error.user_message)
+        flash(error_message)
         return None
 
     def dispatch_request(self):
@@ -436,14 +442,19 @@ class VerifyEmailView(StormpathView):
                 # If the sptoken is invalid or missing, render an email
                 # form that will resend an sptoken to the new email provided.
 
+                # Sets an error message.
                 if self.request_wants_json:
                     if error.status == 400:
-                        error.user_message = 'sptoken parameter not provided.'
+                        error_message = 'sptoken parameter not provided.'
+                    else:
+                        error_message = (
+                            error.user_message if error.user_message
+                            else error.message)
 
                     return self.make_stormpath_response(
                         data=json.dumps({
                             'status': error.status,
-                            'message': error.user_message}),
+                            'message': error_message}),
                         status_code=error.status)
 
                 return self.make_stormpath_response(

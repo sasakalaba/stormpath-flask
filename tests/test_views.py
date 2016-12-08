@@ -5,6 +5,7 @@ import sys
 from flask.ext.stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
+from stormpath.error import Error as StormpathError
 from flask_stormpath.views import (
     StormpathView, FacebookLoginView, GoogleLoginView, VerifyEmailView, View)
 from flask import session, url_for, Response
@@ -44,8 +45,7 @@ class StormpathViewTestCase(StormpathTestCase):
                 form_fields.append(field)
 
         # Sort and compare form fields
-        form_fields.sort(), expected_fields.sort()
-        self.assertEqual(form_fields, expected_fields)
+        self.assertDictList(form_fields, expected_fields, 'name')
 
     def assertJsonResponse(
             self, method, view, status_code, expected_response,
@@ -88,7 +88,7 @@ class StormpathViewTestCase(StormpathTestCase):
             # them, since we cannot predetermine these values in our expected
             # response.
             if user_to_json:
-                request_response = json.loads(resp.data)
+                request_response = json.loads(resp.data.decode())
                 undefined_data = ('href', 'modified_at', 'created_at')
                 self.assertTrue(
                     all(key in request_response['account'].keys()
@@ -96,13 +96,14 @@ class StormpathViewTestCase(StormpathTestCase):
                 for key in undefined_data:
                     request_response['account'].pop(key)
             else:
-                request_response = json.loads(resp.data)
+                request_response = json.loads(resp.data.decode())
 
         # Convert responses to dicts, sort them if necessary, and compare.
         expected_response = json.loads(expected_response)
         if hasattr(request_response, 'sort'):
-            request_response.sort(), expected_response.sort()
-        self.assertEqual(request_response, expected_response)
+            self.assertDictList(request_response, expected_response, 'name')
+        else:
+            self.assertEqual(request_response, expected_response)
 
 
 class TestHelperMethods(StormpathViewTestCase):
@@ -161,13 +162,18 @@ class TestHelperMethods(StormpathViewTestCase):
                 'text/html', resp.headers[0]))
             self.assertTrue(self.check_header(
                 'application/json', resp.headers[0]))
-            self.assertEqual(resp.data, '{"foo": "bar"}')
+            self.assertEqual(resp.data.decode(), '{"foo": "bar"}')
 
             # Ensure that stormpath_response is html if request wants html.
             c.get('/')
             resp = self.view.make_stormpath_response(
                 data, template='flask_stormpath/base.html', return_json=False)
-            self.assertTrue(isinstance(resp, unicode))
+
+            # Python 3 support for testing html response.
+            if sys.version_info.major == 3:
+                self.assertTrue(isinstance(resp, str))
+            else:
+                self.assertTrue(isinstance(resp, unicode))
 
     def test_validate_request(self):
         with self.app.test_client() as c:
@@ -274,6 +280,37 @@ class TestHelperMethods(StormpathViewTestCase):
             self.assertEqual(response.status, '501 NOT IMPLEMENTED')
             self.assertEqual(response.status_code, 501)
             self.assertEqual(response.content_type, 'text/html')
+
+    @patch('flask_stormpath.views.flash')
+    def test_process_stormpath_error(self, flash):
+        # Ensure that process_stormpath_error properly parses the error
+        # message and returns a proper response (json or html).
+
+        error = StormpathError('This is a default message.')
+
+        # Ensure that process_stormpath_error will return a proper response.
+        with self.app.test_request_context():
+            # HTML (or other non JSON) response.
+            response = self.view.process_stormpath_error(error)
+            self.assertIsNone(response)
+            self.assertEqual(flash.call_count, 1)
+
+            # JSON response.
+            self.view.accept_header = 'application/json'
+            response = self.view.process_stormpath_error(error)
+            self.assertEqual(
+                response.headers['Content-Type'], 'application/json')
+            json_response = json.loads(response.response[0].decode())
+            self.assertEqual(
+                json_response['message'], 'This is a default message.')
+
+            # Ensure that self.error_message will check for error.user_message
+            # first, but will default to error.message otherwise.
+            error.user_message = 'This is a user message.'
+            response = self.view.process_stormpath_error(error)
+            json_response = json.loads(response.response[0].decode())
+            self.assertEqual(
+                json_response['message'], 'This is a user message.')
 
 
 class TestRegister(StormpathViewTestCase):
@@ -1143,7 +1180,7 @@ class TestVerify(StormpathViewTestCase):
                 email='r@verify.com',
                 password='woot1LoveCookies!',
             )
-        self.account = user.tenant.accounts.search(user.email)[0]
+        self.account = self.directory.accounts.search(user.email)[0]
 
         # Specify url for json
         self.verify_url = ''.join([
@@ -1571,7 +1608,7 @@ class TestMe(StormpathViewTestCase):
             resp = c.get('/me')
             account = User.from_login(email, password)
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.data, account.to_json())
+            self.assertEqual(resp.data.decode(), account.to_json())
 
     def test_redirect_to_login(self):
 
@@ -1638,7 +1675,7 @@ class TestMe(StormpathViewTestCase):
             })
 
             # Ensure that expanded me response will return proper data.
-            self.assertEqual(json.loads(resp.data), json_data)
+            self.assertEqual(json.loads(resp.data.decode()), json_data)
 
 
 class TestFacebookLogin(StormpathViewTestCase):

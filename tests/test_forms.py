@@ -75,8 +75,8 @@ class TestStormpathForm(StormpathTestCase):
             new_form = StormpathForm()
             field_diff = list(set(form_config['fieldOrder']) - set(
                 dir(new_form)))
-            field_diff.sort(), form_config['fieldOrder'].sort()
-            self.assertEqual(field_diff, form_config['fieldOrder'])
+            self.assertEqual(
+                sorted(field_diff), sorted(form_config['fieldOrder']))
 
     def test_login_form_building(self):
         form_config = self.app.config['stormpath']['web']['login']['form']
@@ -211,10 +211,10 @@ class TestStormpathForm(StormpathTestCase):
                 field_specs.append(field)
 
             # Ensure that _json fields are the same as expected fields.
-            self.assertEqual(form._json, expected_fields)
+            self.assertDictList(form._json, expected_fields, 'name')
 
             # Ensure that _json fields are the same as config settings.
-            self.assertEqual(form._json, field_specs)
+            self.assertDictList(form._json, expected_fields, 'name')
 
     def test_json_property(self):
         # Specify expected fields
@@ -249,7 +249,7 @@ class TestStormpathForm(StormpathTestCase):
                 field_specs.append(field)
 
             # Ensure that json return value is the same as config settings.
-            self.assertEqual(json.loads(form.json), field_specs)
+            self.assertDictList(json.loads(form.json), field_specs, 'name')
 
             # We cannot compare expected_fields directly, so we'll first
             # compare that both values are strings.
@@ -257,4 +257,4 @@ class TestStormpathForm(StormpathTestCase):
                 type(form.json), type(json.dumps(expected_fields)))
 
             # Then compare that they both contain the same values.
-            self.assertEqual(json.loads(form.json), expected_fields)
+            self.assertDictList(json.loads(form.json), expected_fields, 'name')
