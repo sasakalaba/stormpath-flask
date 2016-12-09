@@ -1,7 +1,7 @@
 """Run tests against our custom decorators."""
 
 
-from flask.ext.stormpath.decorators import groups_required
+from flask_stormpath.decorators import groups_required
 from .helpers import StormpathTestCase
 
 

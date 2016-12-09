@@ -1,8 +1,8 @@
 """Run tests against our custom context processors."""
 
 
-from flask.ext.stormpath import User, user
-from flask.ext.stormpath.context_processors import user_context_processor
+from flask_stormpath import User, user
+from flask_stormpath.context_processors import user_context_processor
 from .helpers import StormpathTestCase
 
 

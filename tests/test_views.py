@@ -2,14 +2,14 @@
 
 
 import sys
-from flask.ext.stormpath.models import User
+from flask_stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper
 from stormpath.resources import Resource
 from stormpath.error import Error as StormpathError
 from flask_stormpath.views import (
     StormpathView, FacebookLoginView, GoogleLoginView, VerifyEmailView, View)
 from flask import session, url_for, Response
-from flask.ext.login import current_user
+from flask_login import current_user
 from werkzeug.exceptions import BadRequest
 import json
 
@@ -1740,7 +1740,7 @@ class TestFacebookLogin(StormpathViewTestCase):
             # Try to log a user in.
             resp = c.get('/facebook', follow_redirects=True)
             self.assertEqual(resp.status_code, 200)
-            self.assertTrue(current_user.is_anonymous())
+            self.assertTrue(current_user.is_anonymous)
 
             self.assertTrue(
                 'Oops! We encountered an unexpected error.  Please contact ' +
@@ -1759,7 +1759,7 @@ class TestFacebookLogin(StormpathViewTestCase):
             # Try to log a user in.
             resp = c.get('/facebook')
             self.assertEqual(resp.status_code, 302)
-            self.assertTrue(current_user.is_anonymous())
+            self.assertTrue(current_user.is_anonymous)
             location = resp.headers.get('location')
             self.assertTrue(facebook_login_redirect_url in location)
 
@@ -1818,7 +1818,7 @@ class TestGoogleLogin(StormpathViewTestCase):
                 '/google', query_string={'code': 'mocked access token'},
                 follow_redirects=True)
             self.assertEqual(resp.status_code, 200)
-            self.assertTrue(current_user.is_anonymous())
+            self.assertTrue(current_user.is_anonymous)
 
             self.assertTrue(
                 'Oops! We encountered an unexpected error.  Please contact ' +
@@ -1838,6 +1838,6 @@ class TestGoogleLogin(StormpathViewTestCase):
             resp = c.get(
                 '/google', query_string={'code': 'mocked access token'})
             self.assertEqual(resp.status_code, 302)
-            self.assertTrue(current_user.is_anonymous())
+            self.assertTrue(current_user.is_anonymous)
             location = resp.headers.get('location')
             self.assertTrue(facebook_login_redirect_url in location)

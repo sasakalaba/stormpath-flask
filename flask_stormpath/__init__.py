@@ -5,15 +5,15 @@ import os
 from datetime import timedelta
 from flask import Blueprint, __version__ as flask_version, current_app
 
-from flask.ext.login import (
+from flask_login import (
     LoginManager,
     current_user,
-    _get_user,
     login_required,
     login_user,
     logout_user
 )
 
+from flask_login.utils import _get_user
 from stormpath.client import Client
 from stormpath.error import Error as StormpathError
 from stormpath_config.loader import ConfigLoader

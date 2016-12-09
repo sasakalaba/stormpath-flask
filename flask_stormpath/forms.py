@@ -1,7 +1,7 @@
 """Helper forms which make handling common operations simpler."""
 
 
-from flask.ext.wtf import Form
+from flask_wtf import FlaskForm
 from wtforms.widgets import HiddenInput
 from wtforms.fields import PasswordField, StringField
 from wtforms.validators import InputRequired, EqualTo, Email
@@ -9,7 +9,7 @@ from stormpath.resources import Resource
 import json
 
 
-class StormpathForm(Form):
+class StormpathForm(FlaskForm):
     @classmethod
     def specialize_form(basecls, config):
         """

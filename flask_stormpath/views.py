@@ -13,7 +13,7 @@ from flask import (
     make_response
 )
 from flask.views import View
-from flask.ext.login import (
+from flask_login import (
     login_user, logout_user, login_required, current_user)
 from six import string_types
 from stormpath.resources.provider import Provider

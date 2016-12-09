@@ -1,7 +1,7 @@
 """Custom context processors to make template development simpler."""
 
 
-from flask.ext.login import _get_user
+from flask_login.utils import _get_user
 
 
 def user_context_processor():

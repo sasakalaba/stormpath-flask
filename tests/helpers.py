@@ -11,7 +11,7 @@ from unittest import TestCase
 from uuid import uuid4
 
 from flask import Flask
-from flask.ext.stormpath import StormpathManager, StormpathError, User
+from flask_stormpath import StormpathManager, StormpathError, User
 from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
 from oauth2client.client import OAuth2WebServerFlow

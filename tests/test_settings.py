@@ -4,8 +4,8 @@
 from datetime import timedelta
 from os import environ
 from unittest import skip
-from flask.ext.stormpath.errors import ConfigurationError
-from flask.ext.stormpath.settings import (
+from flask_stormpath.errors import ConfigurationError
+from flask_stormpath.settings import (
     StormpathSettings)
 from .helpers import StormpathTestCase
 
