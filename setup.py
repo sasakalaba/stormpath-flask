@@ -52,12 +52,17 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Flask>=0.9.0',
-        'Flask-Login==0.3.2',
-        'Flask-WTF>=0.9.5',
-        'facebook-sdk==0.4.0',
-        'oauth2client==1.5.2',
-        'stormpath==2.1.6',
+        'Sphinx>=1.5',
+        'pytest>=3.0.5',
+        'pytest-cov==2.4.0',
+        'pytest-xdist>=1.15.0',
+        'pytest-env==0.6.0',
+        'Flask>=0.11.1',
+        'Flask-Login==0.4.0',
+        'Flask-WTF>=0.13.1',
+        'facebook-sdk==2.0.0',
+        'oauth2client==4.0.0',
+        'stormpath==2.4.5',
         'blinker==1.4'
     ],
     dependency_links=[
