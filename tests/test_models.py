@@ -54,28 +54,28 @@ class TestUser(StormpathTestCase):
 
     def test_is_active(self):
         # Ensure users are active by default.
-        self.assertEqual(self.user.is_active(), True)
+        self.assertEqual(self.user.is_active, True)
 
         # Ensure users who have their accounts explicitly disabled actually
         # return a proper status when `is_active` is called.
         self.user.status = User.STATUS_DISABLED
-        self.assertEqual(self.user.is_active(), False)
+        self.assertEqual(self.user.is_active, False)
 
         # Ensure users who have not verified their accounts return a proper
         # status when `is_active` is called.
         self.user.status = User.STATUS_UNVERIFIED
-        self.assertEqual(self.user.is_active(), False)
+        self.assertEqual(self.user.is_active, False)
 
     def test_is_anonymous(self):
         # There is no way we can be anonymous, as Stormpath doesn't support
         # anonymous users (that is a job better suited for a cache or
         # something).
-        self.assertEqual(self.user.is_anonymous(), False)
+        self.assertEqual(self.user.is_anonymous, False)
 
     def test_is_authenticated(self):
         # This should always return true.  If a user account can be
         # fetched, that means it must be authenticated.
-        self.assertEqual(self.user.is_authenticated(), True)
+        self.assertEqual(self.user.is_authenticated, True)
 
     def test_create(self):
 

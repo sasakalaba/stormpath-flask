@@ -13,10 +13,7 @@ Documentation on RTFD: http://flask-stormpath.readthedocs.org/en/latest/
 from multiprocessing import cpu_count
 from subprocess import call
 
-from setuptools import (
-    Command,
-    setup,
-)
+from setuptools import Command, setup
 
 
 class RunTests(Command):
@@ -32,31 +29,25 @@ class RunTests(Command):
 
     def run(self):
         """Run our tests!"""
-        errno = call(['py.test', '-n', str(cpu_count())])
+        errno = call(['py.test', '-n', str(cpu_count()), 'tests/'])
         raise SystemExit(errno)
 
 
 setup(
-    name='Flask-Stormpath',
-    version='0.4.5',
-    url='https://github.com/stormpath/stormpath-flask',
-    license='Apache',
-    author='Stormpath, Inc.',
-    author_email='python@stormpath.com',
-    description='Simple and secure user authentication for Flask via ' +
-        'Stormpath.',
-    long_description=__doc__,
-    packages=['flask_stormpath'],
-    cmdclass={'test': RunTests},
-    zip_safe=False,
-    include_package_data=True,
-    platforms='any',
-    install_requires=[
-        'Sphinx>=1.5',
-        'pytest>=3.0.5',
-        'pytest-cov==2.4.0',
-        'pytest-xdist>=1.15.0',
-        'pytest-env==0.6.0',
+    name = 'Flask-Stormpath',
+    version = '0.4.8',
+    url = 'https://github.com/stormpath/stormpath-flask',
+    license = 'Apache',
+    author = 'Stormpath, Inc.',
+    author_email = 'python@stormpath.com',
+    description = 'Simple and secure user authentication for Flask via Stormpath.',
+    long_description = __doc__,
+    packages = ['flask_stormpath'],
+    cmdclass = {'test': RunTests},
+    zip_safe = False,
+    include_package_data = True,
+    platforms = 'any',
+    install_requires = [
         'Flask>=0.11.1',
         'Flask-Login==0.4.0',
         'Flask-WTF>=0.13.1',
@@ -65,6 +56,9 @@ setup(
         'stormpath==2.4.5',
         'blinker==1.4'
     ],
+    extras_require = {
+        'test': ['coverage', 'pytest', 'pytest-cov', 'pytest-env', 'python-coveralls', 'Sphinx', 'pytest-xdist'],
+    },
     dependency_links=[
         'git+git://github.com/pythonforfacebook/facebook-sdk.git@e65d06158' +
         'e48388b3932563f1483ca77065951b3#egg=facebook-sdk-1.0.0-alpha',

@@ -7,16 +7,51 @@ Change Log
 All library changes, in descending order.
 
 
-Version 0.4.5
+Version 0.4.8
 -------------
 
-**Not yet released.**
+**Released September 21, 2016.**
 
+- Refactoring registration logic to use form validation.  Thanks `@jcass77
+  <https://github.com/jcass77>`_ for the PR!
+- Updating some tracking codes on docs.
+
+
+Version 0.4.7
+-------------
+
+**Released September 16, 2016.**
+
+- Updating the library components to work with the latest release of
+  Flask-Login.  Thanks `@01walid <https://github.com/01walid>`_ for the PR!
+
+
+Version 0.4.6
+-------------
+
+**Released on September 6, 2016.**
+
+- Raising a clear error message when Flask-Stormpath fails to find the Stormpath
+  Application. This makes the debugging experience simpler for new developers.
+- Replacing deprecated ``from flask.ext.xxx`` import syntax to work with new
+  Flask release.
+- Making error strings UTF-8.
+- Handling errors in templates in a better way.
+- Adding Python 3 support.
 - Upgrading Stormpath dependency to latest release.
 - Upgrading oauth2client dependency to latest release.
 - Upgrading blinker dependency to latest release.
 - Upgrading Flask-Login dependency to latest release.
-- Adding Python 3 support.
+
+
+Version 0.4.5
+-------------
+
+**Released on April 22, 2016.**
+
+- Upgrading facebook-sdk dependency.
+- Providing Facebook support for hosts which require outbound HTTP proxying.
+- Fixing styling issue with CSS forms.
 
 
 Version 0.4.4

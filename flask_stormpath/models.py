@@ -36,6 +36,7 @@ class User(Account):
         """
         return text_type(self.href)
 
+    @property
     def is_active(self):
         """
         A user account is active if, and only if, their account status is
@@ -43,12 +44,14 @@ class User(Account):
         """
         return self.status == 'ENABLED'
 
+    @property
     def is_anonymous(self):
         """
         We don't support anonymous users, so this is always False.
         """
         return False
 
+    @property
     def is_authenticated(self):
         """
         All users will always be authenticated, so this will always return

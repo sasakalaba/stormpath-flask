@@ -2,7 +2,6 @@
 
 
 import json
-import sys
 from flask import (
     abort,
     current_app,
