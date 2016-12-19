@@ -204,10 +204,9 @@ class SocialMethodsTestMixin(object):
 
     def __init__(self, social_name, *args, **kwargs):
         # Validate social_name
-        if social_name == 'facebook' or social_name == 'google':
-            self.social_name = social_name
-        else:
+        if social_name not in ['facebook', 'google']:
             raise ValueError('Wrong social name.')
+        self.social_name = social_name
 
         # Set our error message
         self.error_message = (

@@ -48,7 +48,7 @@ class StormpathView(View):
 
         # If no accept types are specified, or the preferred accept type is
         # */*, response type will be the first element of self.allowed_types.
-        if (len(self.request_accept_types) == 0 or
+        if (not self.request_accept_types or
                 self.request_accept_types[0][0] == '*/*'):
             self.accept_header = self.allowed_types[0]
 
@@ -529,9 +529,10 @@ class SocialView(View):
     """ Parent class for social login views. """
     def __init__(self, *args, **kwargs):
         # First validate social view call
-        self.social_name = kwargs.pop('social_name')
-        if self.social_name != 'facebook' and self.social_name != 'google':
+        social_name = kwargs.pop('social_name')
+        if social_name not in ['facebook', 'google']:
             raise ValueError('Social service is not supported.')
+        self.social_name = social_name
 
         # Then set the access token and the provider
         self.access_token = kwargs.pop('access_token')
@@ -559,8 +560,7 @@ class SocialView(View):
             flash(self.error_message)
             redirect_url = current_app.config[
                 'stormpath']['web']['login']['uri']
-            redirect_url = redirect_url if redirect_url else '/'
-            return redirect(redirect_url)
+            return redirect(redirect_url if redirect_url else '/')
 
         # Now we'll log the new user into their account.  From this point on,
         # this social user will be treated exactly like a normal Stormpath

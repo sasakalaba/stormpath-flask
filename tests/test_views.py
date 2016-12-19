@@ -473,8 +473,8 @@ class TestRegister(StormpathViewTestCase):
         # successful registration.
         self.app.config['stormpath']['web']['register']['autoLogin'] = True
         stormpath_register_redirect_url = '/redirect_for_registration'
-        (self.app.config['stormpath']['web']['register']
-            ['nextUri']) = stormpath_register_redirect_url
+        self.app.config['stormpath']['web']['register'][
+            'nextUri'] = stormpath_register_redirect_url
 
         with self.app.test_client() as c:
             resp = c.get('/register')
@@ -504,10 +504,10 @@ class TestRegister(StormpathViewTestCase):
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
         stormpath_register_redirect_url = '/redirect_for_registration'
-        (self.app.config['stormpath']['web']['login']
-            ['nextUri']) = stormpath_login_redirect_url
-        (self.app.config['stormpath']['web']['register']
-            ['nextUri']) = stormpath_register_redirect_url
+        self.app.config['stormpath']['web']['login'][
+            'nextUri'] = stormpath_login_redirect_url
+        self.app.config['stormpath']['web']['register'][
+            'nextUri'] = stormpath_register_redirect_url
 
         # We don't need a username field for this test. We'll disable it
         # so the form can be valid.
@@ -715,10 +715,10 @@ class TestLogin(StormpathViewTestCase):
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
         stormpath_register_redirect_url = '/redirect_for_registration'
-        (self.app.config['stormpath']['web']['login']
-            ['nextUri']) = stormpath_login_redirect_url
-        (self.app.config['stormpath']['web']['register']
-            ['nextUri']) = stormpath_register_redirect_url
+        self.app.config['stormpath']['web']['login'][
+            'nextUri'] = stormpath_login_redirect_url
+        self.app.config['stormpath']['web']['register'][
+            'nextUri'] = stormpath_register_redirect_url
 
         with self.app.test_client() as c:
             # Attempt a login using username and password.
@@ -1200,8 +1200,8 @@ class TestVerify(StormpathViewTestCase):
 
         # Setting redirect URL to something that is easy to check
         stormpath_verify_redirect_url = '/redirect_for_verify'
-        (self.app.config['stormpath']['web']['verifyEmail']
-            ['nextUri']) = stormpath_verify_redirect_url
+        self.app.config['stormpath']['web']['verifyEmail'][
+            'nextUri'] = stormpath_verify_redirect_url
 
         # Get activation token
         sptoken = self.get_verification_token()
@@ -1337,8 +1337,8 @@ class TestVerify(StormpathViewTestCase):
 
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
-        (self.app.config['stormpath']['web']['login']
-            ['nextUri']) = stormpath_login_redirect_url
+        self.app.config['stormpath']['web']['login'][
+            'nextUri'] = stormpath_login_redirect_url
 
         # Get activation token
         sptoken = self.get_verification_token()
@@ -1710,8 +1710,8 @@ class TestFacebookLogin(StormpathViewTestCase):
 
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
-        (self.app.config['stormpath']['web']['login']
-            ['nextUri']) = stormpath_login_redirect_url
+        self.app.config['stormpath']['web']['login'][
+            'nextUri'] = stormpath_login_redirect_url
 
         # Ensure that the correct access token will log our user in and
         # redirect him to the index page.
@@ -1753,8 +1753,8 @@ class TestFacebookLogin(StormpathViewTestCase):
 
             # Setting redirect URL to something that is easy to check
             facebook_login_redirect_url = '/redirect_for_facebook_login'
-            (self.app.config['stormpath'][
-                'web']['login']['uri']) = facebook_login_redirect_url
+            self.app.config['stormpath']['web']['login'][
+                'uri'] = facebook_login_redirect_url
 
             # Try to log a user in.
             resp = c.get('/facebook')
@@ -1791,8 +1791,8 @@ class TestGoogleLogin(StormpathViewTestCase):
 
         # Setting redirect URL to something that is easy to check
         stormpath_login_redirect_url = '/redirect_for_login'
-        (self.app.config['stormpath']['web']['login']
-            ['nextUri']) = stormpath_login_redirect_url
+        self.app.config['stormpath']['web']['login'][
+            'nextUri'] = stormpath_login_redirect_url
 
         # Ensure that the correct access token will log our user in and
         # redirect him to the index page.
@@ -1831,8 +1831,8 @@ class TestGoogleLogin(StormpathViewTestCase):
 
             # Setting redirect URL to something that is easy to check
             facebook_login_redirect_url = '/redirect_for_facebook_login'
-            (self.app.config['stormpath'][
-                'web']['login']['uri']) = facebook_login_redirect_url
+            self.app.config['stormpath']['web']['login'][
+                'uri'] = facebook_login_redirect_url
 
             # Try to log a user in.
             resp = c.get(
