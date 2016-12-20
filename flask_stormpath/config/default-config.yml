@@ -5,14 +5,24 @@ stormpath:
 
   web:
     basePath: null
+    domainName: null  # Required if using subdomain-based multi-tenancy
+    multiTenancy:
+      # When enabled, the framework will require the user to authenticate against
+      # a specific Organization.  The authenticated organization is persisted in
+      # the access token that is issued.
+      #
+      # At the moment we only support a sub-domain based strategy, wherby the
+      # user must arrive on the subdomain that correlates with their tenant in
+      # order to authenticate.  If they visit the parent domain, they will be
+      # required to identify the organization they wish to use.
+      enabled: false
+      strategy: "subdomain"
 
     oauth2:
       enabled: true
       uri: "/oauth/token"
       client_credentials:
         enabled: true
-        accessToken:
-          ttl: 3600 # seconds
       password:
         enabled: true
         validationStrategy: "local"
@@ -51,6 +61,15 @@ stormpath:
       - application/json
       - text/html
 
+    # For the common account fields (givenName, surname, etc) the `required`
+    # property is derived from the account schema of the default account store
+    # of the application or organization.  This value can be locally overridden
+    # as `true`, even if `false` in the account schema.  This will provide form
+    # validation at the framework level only.  Attempting to override with `false`
+    # when the schema defines `true` will result in a configuration warning, and
+    # a the end-user will receive a form submission error if the required field
+    # is not provided.
+
     register:
       enabled: true
       uri: "/register"
@@ -59,6 +78,17 @@ stormpath:
       view: "register"
       form:
         fields:
+          # This field will be shown as the only field if the user is visiting
+          # the parent domain of a sub-domain based multi-tenant configuration.
+          # The user will be redirected to the correct subdomain to finish the
+          # workflow.
+          organizationNameKey:
+            enabled: null
+            visible: true
+            label: "Organization"
+            placeholder: "e.g. my-company"
+            required: true
+            type: "text"
           givenName:
             enabled: true
             visible: true
@@ -168,6 +198,17 @@ stormpath:
       enabled: true
       uri: "/logout"
       nextUri: "/"
+
+    # If using subdoain multi-tenancy, this form is shown on the parent domain
+    # when organization context is unkonwn.  Configuration of this form is limited
+    # to label, placeholder and view template location.
+    organizationSelect:
+      view: "organization-select"
+      form:
+        fields:
+          organizationNameKey:
+            label: "Enter your organization name to continue"
+            placeholder: "e.g. my-company"
 
     # Unless forgotPassword.enabled is explicitly set to false, this feature
     # will be automatically enabled if the default account store for the defined
