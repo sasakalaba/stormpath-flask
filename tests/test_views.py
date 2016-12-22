@@ -312,6 +312,32 @@ class TestHelperMethods(StormpathViewTestCase):
             self.assertEqual(
                 json_response['message'], 'This is a user message.')
 
+    def test_csrf_disabled_on_json(self):
+        # Ensure that JSON requests have CSRF disabled.
+
+        with self.app.test_client() as c:
+            # Ensure that HTML will have CSRF enabled.
+            c.get('/')
+            with self.app.app_context():
+                self.view = StormpathView(self.config)
+            self.assertTrue(self.view.form.csrf_enabled)
+
+            # Ensure that JSON will have CSRF disabled.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, self.json_header)
+            c.get('/')
+            with self.app.app_context():
+                self.view = StormpathView(self.config)
+            self.assertFalse(self.view.form.csrf_enabled)
+
+            # Ensure that non JSON will have CSRF enabled.
+            self.app.wsgi_app = HttpAcceptWrapper(
+                self.default_wsgi_app, 'text/plain')
+            c.get('/')
+            with self.app.app_context():
+                self.view = StormpathView(self.config)
+            self.assertTrue(self.view.form.csrf_enabled)
+
 
 class TestRegister(StormpathViewTestCase):
     """Test our registration view."""

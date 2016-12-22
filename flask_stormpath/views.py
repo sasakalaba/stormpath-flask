@@ -38,7 +38,6 @@ class StormpathView(View):
 
     def __init__(self, config, *args, **kwargs):
         self.config = config
-        self.form = StormpathForm.specialize_form(config.get('form'))()
 
         # Fetch the request type and match it against our allowed types.
         self.allowed_types = current_app.config['stormpath']['web']['produces']
@@ -58,6 +57,14 @@ class StormpathView(View):
             self.invalid_request = True
         else:
             self.invalid_request = False
+
+        # Build the form
+        if self.request_wants_json:
+            form_kwargs = {'csrf_enabled': False}
+        else:
+            form_kwargs = {'csrf_enabled': True}
+        self.form = StormpathForm.specialize_form(
+            config.get('form'))(**form_kwargs)
 
     def make_stormpath_response(
             self, data, template=None, return_json=True, status_code=200):
