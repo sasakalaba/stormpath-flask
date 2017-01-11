@@ -118,8 +118,8 @@ class CredentialsValidator(object):
         graph_api = GraphAPI()
         try:
             graph_api.get_app_access_token(
-                environ.get('FACEBOOK_APP_ID'),
-                environ.get('FACEBOOK_APP_SECRET'))
+                environ.get('FACEBOOK_API_ID'),
+                environ.get('FACEBOOK_API_SECRET'))
         except GraphAPIError:
             raise ValueError(
                 'Facebook app id and secret invalid or missing. Set your ' +
@@ -224,8 +224,8 @@ def bootstrap_flask_app(app):
     # Add secrets and ids for social login stuff.
     a.config['STORMPATH_SOCIAL'] = {
         'FACEBOOK': {
-            'app_id': environ.get('FACEBOOK_APP_ID'),
-            'app_secret': environ.get('FACEBOOK_APP_SECRET')},
+            'app_id': environ.get('FACEBOOK_API_ID'),
+            'app_secret': environ.get('FACEBOOK_API_SECRET')},
         'GOOGLE': {
             'client_id': environ.get('GOOGLE_CLIENT_ID'),
             'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
