@@ -60,9 +60,9 @@ class StormpathView(View):
 
         # Build the form
         if self.request_wants_json:
-            form_kwargs = {'csrf_enabled': False}
+            form_kwargs = {'meta': {'csrf': False}}
         else:
-            form_kwargs = {'csrf_enabled': True}
+            form_kwargs = {'meta': {'csrf': True}}
         self.form = StormpathForm.specialize_form(
             config.get('form'))(**form_kwargs)
 
