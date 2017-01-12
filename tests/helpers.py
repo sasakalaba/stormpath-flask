@@ -6,7 +6,7 @@ operations.
 """
 
 
-from os import environ
+import os
 from unittest import TestCase
 from uuid import uuid4
 
@@ -16,6 +16,7 @@ from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
 from oauth2client.client import OAuth2WebServerFlow
 import requests
+import json
 
 
 class StormpathTestCase(TestCase):
@@ -60,7 +61,7 @@ class StormpathTestCase(TestCase):
             )
 
     def tearDown(self):
-        """Destroy all provisioned Stormpath resources."""
+        """ Destroy all provisioned Stormpath resources. """
         destroy_resources(self.application, self.client)
 
     def assertDictList(self, list1, list2, key_name):
@@ -69,6 +70,11 @@ class StormpathTestCase(TestCase):
         sorted_list1 = sorted(list1, key=lambda k: k[key_name])
         sorted_list2 = sorted(list2, key=lambda k: k[key_name])
         self.assertEqual(sorted_list1, sorted_list2)
+
+    def reinit_app(self):
+        # Reinitializes our testing application.
+        self.app = bootstrap_flask_app(self.application)
+        self.manager = StormpathManager(self.app)
 
 
 class SignalReceiver(object):
@@ -118,16 +124,16 @@ class CredentialsValidator(object):
         graph_api = GraphAPI()
         try:
             graph_api.get_app_access_token(
-                environ.get('FACEBOOK_API_ID'),
-                environ.get('FACEBOOK_API_SECRET'))
+                os.environ.get('FACEBOOK_API_ID'),
+                os.environ.get('FACEBOOK_API_SECRET'))
         except GraphAPIError:
             raise ValueError(
                 'Facebook app id and secret invalid or missing. Set your ' +
                 'credentials as environment variables before testing.')
 
     def validate_google_credentials(self, app):
-        root_url = environ.get('ROOT_URL')
-        port = environ.get('PORT')
+        root_url = os.environ.get('ROOT_URL')
+        port = os.environ.get('PORT')
 
         # Ensure that our url parameters are present
         if not root_url or not port:
@@ -138,8 +144,8 @@ class CredentialsValidator(object):
 
         # Ensure that Google api id and secret are valid:
         flow = OAuth2WebServerFlow(
-            client_id=environ.get('GOOGLE_CLIENT_ID'),
-            client_secret=environ.get('GOOGLE_CLIENT_SECRET'),
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
             scope=(
                 'https://www.googleapis.com/auth/userinfo.email',
                 'https://www.googleapis.com/auth/userinfo.profile'),
@@ -174,8 +180,8 @@ def bootstrap_client():
     :returns: A new Stormpath Client, fully initialized.
     """
     return Client(
-        id=environ.get('STORMPATH_API_KEY_ID'),
-        secret=environ.get('STORMPATH_API_KEY_SECRET'),
+        id=os.environ.get('STORMPATH_API_KEY_ID'),
+        secret=os.environ.get('STORMPATH_API_KEY_SECRET'),
     )
 
 
@@ -213,25 +219,42 @@ def bootstrap_flask_app(app):
     a = Flask(__name__)
     a.config['DEBUG'] = True
     a.config['SECRET_KEY'] = uuid4().hex
-    a.config['STORMPATH_API_KEY_ID'] = environ.get('STORMPATH_API_KEY_ID')
-    a.config['STORMPATH_API_KEY_SECRET'] = environ.get(
+    a.config['STORMPATH_API_KEY_ID'] = os.environ.get('STORMPATH_API_KEY_ID')
+    a.config['STORMPATH_API_KEY_SECRET'] = os.environ.get(
         'STORMPATH_API_KEY_SECRET')
     a.config['STORMPATH_APPLICATION'] = app.name
     a.config['WTF_CSRF_ENABLED'] = False
     a.config['STORMPATH_ENABLE_FACEBOOK'] = True
     a.config['STORMPATH_ENABLE_GOOGLE'] = True
 
+    # Set file path for yaml config file. We do this since we need to test out
+    # our application with different yaml configurations.
+    a.config['STORMPATH_CONFIG_PATH'] = create_config_path(
+        **json.loads(os.environ.get('TEST_CONFIG', '{}')))
+
     # Add secrets and ids for social login stuff.
     a.config['STORMPATH_SOCIAL'] = {
         'FACEBOOK': {
-            'app_id': environ.get('FACEBOOK_API_ID'),
-            'app_secret': environ.get('FACEBOOK_API_SECRET')},
+            'app_id': os.environ.get('FACEBOOK_API_ID'),
+            'app_secret': os.environ.get('FACEBOOK_API_SECRET')},
         'GOOGLE': {
-            'client_id': environ.get('GOOGLE_CLIENT_ID'),
-            'client_secret': environ.get('GOOGLE_CLIENT_SECRET')}
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET')}
     }
 
     return a
+
+
+def create_config_path(filename='', default=True):
+    # Creates a path for yaml config files in our tests directory.
+    if default:
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'flask_stormpath', 'config', 'default-config' + '.yml')
+    else:
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'tests', 'config', filename + '.yml')
 
 
 def destroy_resources(app, client):

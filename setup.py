@@ -57,7 +57,7 @@ setup(
         'blinker==1.4'
     ],
     extras_require = {
-        'test': ['coverage', 'pytest', 'pytest-cov', 'pytest-env', 'python-coveralls', 'Sphinx', 'pytest-xdist'],
+        'test': ['coverage', 'pytest', 'pytest-cov', 'pytest-env', 'python-coveralls', 'Sphinx', 'pytest-xdist', 'ruamel.yaml'],
     },
     dependency_links=[
         'git+git://github.com/pythonforfacebook/facebook-sdk.git@e65d06158' +

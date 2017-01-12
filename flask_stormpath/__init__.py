@@ -138,9 +138,7 @@ class StormpathManager(object):
         :param dict config: The Flask app config.
         """
         # Basic Stormpath credentials and configuration.
-        web_config_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'config/default-config.yml')
+        web_config_file = config.get('STORMPATH_CONFIG_PATH')
         config_loader = ConfigLoader(
             load_strategies=[
                 LoadFileConfigStrategy(web_config_file),

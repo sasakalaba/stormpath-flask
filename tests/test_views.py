@@ -2,8 +2,9 @@
 
 
 import sys
+import os
 from flask_stormpath.models import User
-from .helpers import StormpathTestCase, HttpAcceptWrapper
+from .helpers import StormpathTestCase, HttpAcceptWrapper, create_config_path
 from stormpath.resources import Resource
 from stormpath.error import Error as StormpathError
 from flask_stormpath.views import (
@@ -11,7 +12,9 @@ from flask_stormpath.views import (
 from flask import session, url_for, Response
 from flask_login import current_user
 from werkzeug.exceptions import BadRequest
+from ruamel.yaml import util, round_trip_dump
 import json
+import shutil
 
 if sys.version_info.major == 3:
     from unittest.mock import patch
@@ -105,6 +108,50 @@ class StormpathViewTestCase(StormpathTestCase):
         else:
             self.assertEqual(request_response, expected_response)
 
+    def assertDisabledView(self, view_name, post_data):
+        # Ensure that a disabled view will always return a 404 response.
+
+        # Create a config directory for storing different temporary yaml config
+        # files needed for testing.
+        self.config_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'config')
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+
+        # Disable the view.
+
+        # Create a new updated config file file from the default one.
+        config, ind, bsi = util.load_yaml_guess_indent(
+            open(self.app.config['STORMPATH_CONFIG_PATH']))
+        config['stormpath']['web'][view_name]['enabled'] = False
+        config_name = 'test-config-%s' % view_name
+        round_trip_dump(
+            config, open(create_config_path(config_name, default=False), 'w'),
+            indent=ind, block_seq_indent=bsi)
+
+        # Set new config file before app init.
+        os.environ['TEST_CONFIG'] = json.dumps(
+            {'filename': config_name, 'default': False})
+
+        # Reinitialize the application.
+        self.reinit_app()
+
+        # Ensure that both GET and POST will return a 404.
+        with self.app.test_client() as c:
+            resp = c.get('/' + view_name)
+            self.assertEqual(resp.status_code, 404)
+
+            resp = c.post('/' + view_name, data=post_data)
+            self.assertEqual(resp.status_code, 404)
+
+        # Revert to the default config.
+        os.environ['TEST_CONFIG'] = json.dumps({})
+
+    def tearDown(self):
+        # Destroy temporary yaml config resources.
+        if hasattr(self, 'config_dir') and os.path.exists(self.config_dir):
+            shutil.rmtree(self.config_dir)
+
 
 class TestHelperMethods(StormpathViewTestCase):
     """Test our helper functions."""
@@ -123,8 +170,8 @@ class TestHelperMethods(StormpathViewTestCase):
                 xml = 'Invalid request.'
                 return Response(xml, mimetype='text/xml', status=400)
 
-        self.app.add_url_rule(self.app.config['stormpath']['web'][
-                'invalidRequest']['uri'],
+        self.app.add_url_rule(
+            self.app.config['stormpath']['web']['invalidRequest']['uri'],
             'stormpath.invalid_request',
             InvalidRequestView.as_view('invalid_request'),
         )
@@ -704,6 +751,14 @@ class TestLogin(StormpathViewTestCase):
         # assertJsonResponse method.
         self.form_fields = self.app.config['stormpath']['web']['login'][
             'form']['fields']
+
+    def test_enabled(self):
+        # Ensure that a disabled login will return 404.
+        data = {
+            'login': 'r@rdegges.com',
+            'password': 'woot1LoveCookies!'
+        }
+        self.assertDisabledView('login', data)
 
     def test_email_login(self):
         # Attempt a login using email and password.
