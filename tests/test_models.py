@@ -211,7 +211,7 @@ class SocialMethodsTestMixin(object):
         # Set our error message
         self.error_message = (
             'Stormpath was not able to complete the request to %s:'
-            % self.social_name.title())
+            % self.social_name)
 
     @property
     def social_dir_name(self):
