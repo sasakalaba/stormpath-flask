@@ -348,8 +348,8 @@ class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):
 
         # Set a provider
         self.provider = {
-            'client_id': environ.get('FACEBOOK_APP_ID'),
-            'client_secret': environ.get('FACEBOOK_APP_SECRET'),
+            'client_id': environ.get('FACEBOOK_API_ID'),
+            'client_secret': environ.get('FACEBOOK_API_SECRET'),
             'provider_id': Provider.FACEBOOK,
         }
 
