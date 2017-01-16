@@ -253,8 +253,8 @@ def create_config_path(filename='', default=True):
             'flask_stormpath', 'config', 'default-config' + '.yml')
     else:
         return os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'tests', 'config', filename + '.yml')
+            os.path.dirname(os.path.abspath(__file__)),
+            'config', filename + '.yml')
 
 
 def destroy_resources(app, client):
