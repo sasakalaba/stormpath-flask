@@ -155,7 +155,7 @@ stormpath:
       enabled: null
       uri: "/verify"
       nextUri: "/login?status=verified"
-      errorUri: "/login?status=unverified"
+      unverifiedUri: "/login?status=unverified"
       view: "verify"
       form:
         fields:

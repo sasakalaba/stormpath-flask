@@ -120,7 +120,7 @@ class StormpathViewTestCase(StormpathTestCase):
 
         # Disable the view.
 
-        # Create a new updated config file file from the default one.
+        # Create a new updated config file from the default one.
         config, ind, bsi = util.load_yaml_guess_indent(
             open(self.app.config['STORMPATH_CONFIG_PATH']))
         config['stormpath']['web'][view_name]['enabled'] = False
@@ -1357,7 +1357,7 @@ class TestVerify(StormpathViewTestCase):
             self.assertTrue(
                 'You should be redirected automatically to target URL: ' +
                 '<a href="%s">' % self.app.config[
-                    'stormpath']['web']['verifyEmail']['errorUri'] +
+                    'stormpath']['web']['verifyEmail']['unverifiedUri'] +
                 '/login?status=unverified</a>.' in
                 resp.data.decode('utf-8'))
             self.account.refresh()
@@ -1399,7 +1399,7 @@ class TestVerify(StormpathViewTestCase):
             self.assertTrue(
                 'You should be redirected automatically to target URL: ' +
                 '<a href="%s">' % self.app.config[
-                    'stormpath']['web']['verifyEmail']['errorUri'] +
+                    'stormpath']['web']['verifyEmail']['unverifiedUri'] +
                 '/login?status=unverified</a>.' in
                 resp.data.decode('utf-8'))
             self.account.refresh()

@@ -413,7 +413,7 @@ class VerifyEmailView(StormpathView):
                 if self.request_wants_json:
                         return self.make_stormpath_response(
                             data=json.dumps({}))
-                redirect_url = self.config['errorUri']
+                redirect_url = self.config['unverifiedUri']
 
         # If the request is GET, try to parse and verify the authorization
         # token.
