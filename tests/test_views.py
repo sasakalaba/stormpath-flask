@@ -148,6 +148,8 @@ class StormpathViewTestCase(StormpathTestCase):
         os.environ['TEST_CONFIG'] = json.dumps({})
 
     def tearDown(self):
+        super(StormpathViewTestCase, self).tearDown()
+
         # Destroy temporary yaml config resources.
         if hasattr(self, 'config_dir') and os.path.exists(self.config_dir):
             shutil.rmtree(self.config_dir)
