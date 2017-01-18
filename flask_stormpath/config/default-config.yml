@@ -4,9 +4,13 @@ stormpath:
     href: null
 
   web:
+
     basePath: null
+
     domainName: null  # Required if using subdomain-based multi-tenancy
+
     multiTenancy:
+
       # When enabled, the framework will require the user to authenticate against
       # a specific Organization.  The authenticated organization is persisted in
       # the access token that is issued.
@@ -15,8 +19,10 @@ stormpath:
       # user must arrive on the subdomain that correlates with their tenant in
       # order to authenticate.  If they visit the parent domain, they will be
       # required to identify the organization they wish to use.
+
       enabled: false
       strategy: "subdomain"
+
 
     oauth2:
       enabled: true
@@ -139,6 +145,7 @@ stormpath:
             required: true
             type: "password"
         fieldOrder:
+          - "organizationNameKey"
           - "username"
           - "givenName"
           - "middleName"
@@ -176,6 +183,17 @@ stormpath:
       view: "login"
       form:
         fields:
+          # This field will be shown as the only field if the user is visiting
+          # the parent domain of a sub-domain based multi-tenant configuration.
+          # The user will be redirected to the correct subdomain to finish the
+          # workflow.
+          organizationNameKey:
+            enabled: null
+            visible: true
+            label: "Organization"
+            placeholder: "e.g. my-company"
+            required: true
+            type: "text"
           login:
             enabled: true
             visible: true
@@ -191,6 +209,7 @@ stormpath:
             required: true
             type: "password"
         fieldOrder:
+          - "organizationNameKey"
           - "login"
           - "password"
 
@@ -202,6 +221,7 @@ stormpath:
     # If using subdoain multi-tenancy, this form is shown on the parent domain
     # when organization context is unkonwn.  Configuration of this form is limited
     # to label, placeholder and view template location.
+
     organizationSelect:
       view: "organization-select"
       form:
@@ -235,10 +255,10 @@ stormpath:
     # Stormpath application has the password reset workflow enabled.
     changePassword:
       enabled: null
-      autoLogin: false
       uri: "/change"
       nextUri: "/login?status=reset"
       errorUri: "/forgot?status=invalid_sptoken"
+      autoLogin: false
       view: "change-password"
       form:
         fields:
@@ -295,7 +315,7 @@ stormpath:
         scope: "email profile"
       linkedin:
         uri: "/callbacks/linkedin"
-        scope: "r_basicprofile, r_emailaddress"
+        scope: "r_basicprofile r_emailaddress"
 
     # The /me route is for front-end applications, it returns a JSON object with
     # the current user object.  The developer can opt-in to expanding account
