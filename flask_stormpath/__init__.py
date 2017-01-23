@@ -157,9 +157,6 @@ class StormpathManager(object):
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
 
-        # FIXME: This is a temporary hardcoded hotfix and needs to be removed.
-        config['stormpath']['client']['apiKey']['file'] = None
-
         # Which fields should be displayed when registering new users?
         config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
         config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
@@ -209,29 +206,15 @@ class StormpathManager(object):
         user_agent = 'stormpath-flask/%s flask/%s' % (
             __version__, flask_version)
 
-        # If the user is specifying their credentials via a file path,
-        # we'll use this.
-        if self.app.config['stormpath']['client']['apiKey']['file']:
-            self.client = Client(
-                api_key_file_location=self.app.config['stormpath']
-                ['client']['apiKey']['file'],
-                user_agent=user_agent,
-                # FIXME: read cache from config
-                # cache_options=self.app.config['STORMPATH_CACHE'],
-            )
-
-        # If the user isn't specifying their credentials via a file
-        # path, it means they're using environment variables, so we'll
-        # try to grab those values.
-        else:
-            self.client = Client(
-                id=self.app.config['stormpath']['client']['apiKey']['id'],
-                secret=self.app.config['stormpath']
-                ['client']['apiKey']['secret'],
-                user_agent=user_agent,
-                # FIXME: read cache from config
-                # cache_options=self.app.config['STORMPATH_CACHE'],
-            )
+        # Instantiate client with apiKey id and secret from config.
+        self.client = Client(
+            id=self.app.config['stormpath']['client']['apiKey']['id'],
+            secret=self.app.config['stormpath']
+            ['client']['apiKey']['secret'],
+            user_agent=user_agent,
+            # FIXME: read cache from config
+            # cache_options=self.app.config['STORMPATH_CACHE'],
+        )
 
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
             client_factory=lambda client: self.client)
