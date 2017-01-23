@@ -2,7 +2,6 @@
 
 
 from datetime import timedelta
-from os import environ
 from unittest import skip
 from flask_stormpath.errors import ConfigurationError
 from flask_stormpath.settings import (
@@ -172,55 +171,13 @@ class TestInitSettings(StormpathTestCase):
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
 
-@skip('Check settings will be removed so testing this is no longer relevant.')
+
 class TestCheckSettings(StormpathTestCase):
     """Ensure our settings checker is working properly."""
 
-    def test_requires_api_credentials(self):
-        # We'll remove our default API credentials, and ensure we get an
-        # exception raised.
-        self.app.config['stormpath']['client']['apiKey']['id'] = None
-        self.app.config['stormpath']['client']['apiKey']['secret'] = None
-        self.app.config['stormpath']['client']['apiKey']['file'] = None
-        with self.assertRaises(ConfigurationError) as config_error:
-            self.manager.check_settings(self.app.config)
-        self.assertEqual(
-            config_error.exception.message,
-            'You must define your Stormpath credentials.')
-
-        # Now we'll check to see that if we specify an API key ID and secret
-        # things work.
-        self.app.config['stormpath']['client']['apiKey']['id'] = environ.get(
-            'STORMPATH_API_KEY_ID')
-        self.app.config['stormpath']['client']['apiKey'][
-            'secret'] = environ.get('STORMPATH_API_KEY_SECRET')
-        self.manager.check_settings(self.app.config)
-
-        # Now we'll check to see that if we specify an API key file things
-        # work.
-        self.app.config['stormpath']['client']['apiKey']['id'] = None
-        self.app.config['stormpath']['client']['apiKey']['secret'] = None
-        self.app.config['stormpath']['client']['apiKey'][
-            'file'] = 'apiKey.properties'
-        self.manager.check_settings(self.app.config)
-
-    def test_requires_application(self):
-        # We'll remove our default Application, and ensure we get an exception
-        # raised.
-        self.app.config['stormpath']['application']['href'] = None
-        self.app.config['stormpath']['application']['name'] = None
-        with self.assertRaises(ConfigurationError) as config_error:
-            self.manager.check_settings(self.app.config)
-        self.assertEqual(
-            config_error.exception.message,
-            'You must define your Stormpath application.')
-
     def test_google_settings(self):
-        # Ensure that if the user has Google login enabled, they've specified
-        # the correct settings.
-        self.app.config['STORMPATH_ENABLE_GOOGLE'] = True
-        self.assertRaises(
-            ConfigurationError, self.manager.check_settings, self.app.config)
+        # Disable facebook login for this test.
+        self.app.config['STORMPATH_ENABLE_FACEBOOK'] = False
 
         # Ensure that things don't work if not all social configs are
         # specified.
@@ -241,7 +198,8 @@ class TestCheckSettings(StormpathTestCase):
         self.manager.check_settings(self.app.config)
 
     def test_facebook_settings(self):
-        self.app.config['STORMPATH_ENABLE_FACEBOOK'] = True
+        # Disable google login for this test.
+        self.app.config['STORMPATH_ENABLE_GOOGLE'] = False
 
         # Ensure that things don't work if not all social configs are
         # specified.
@@ -282,6 +240,7 @@ class TestCheckSettings(StormpathTestCase):
         self.app.config['STORMPATH_COOKIE_DURATION'] = timedelta(minutes=1)
         self.manager.check_settings(self.app.config)
 
+    @skip('This will be fixed once the verifyEmail view is finished.')
     def test_verify_email_autologin(self):
         # stormpath.web.register.autoLogin is true, but the default account
         # store of the specified application has the email verification
