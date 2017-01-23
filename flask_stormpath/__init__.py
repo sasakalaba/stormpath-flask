@@ -160,8 +160,6 @@ class StormpathManager(object):
         # Which fields should be displayed when registering new users?
         config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
         config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
-        # FIXME: If this is disabled, only social login can be used.
-        config.setdefault('STORMPATH_ENABLE_EMAIL', True)
 
         # Configure URL mappings.  These URL mappings control which URLs will
         # be used by Flask-Stormpath views.
@@ -173,15 +171,8 @@ class StormpathManager(object):
 
         # Configure templates.  These template settings control which
         # templates are used to render the Flask-Stormpath views.
-        # FIXME: some of the settings break the code because they're not in the spec
         config.setdefault(
             'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
-        # config.setdefault(
-        #    'STORMPATH_FORGOT_PASSWORD_EMAIL_SENT_TEMPLATE',
-        #    'flask_stormpath/forgot_password_success.html')
-        # config.setdefault(
-        #    'STORMPATH_FORGOT_PASSWORD_COMPLETE_TEMPLATE',
-        #    'flask_stormpath/change_password_success.html')
 
         # Social login configuration.
         # FIXME: this breaks the code because it's not in the spec
