@@ -243,7 +243,6 @@ class StormpathManager(object):
         self.application = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
 
-    # FIXME: this will be moved to python config
     def check_settings(self, config):
         """
         Ensure the user-specified settings are valid.
@@ -253,21 +252,6 @@ class StormpathManager(object):
 
         :param dict config: The Flask app config.
         """
-        if not (
-            all([
-                config['stormpath']['client']['apiKey']['id'],
-                config['stormpath']['client']['apiKey']['secret']
-            ]) or config['stormpath']['client']['apiKey']['file']
-        ):
-            raise ConfigurationError(
-                'You must define your Stormpath credentials.')
-
-        if not all([
-            config['stormpath']['application']['href'],
-            config['stormpath']['application']['name']
-        ]):
-            raise ConfigurationError(
-                'You must define your Stormpath application.')
 
         if config['STORMPATH_ENABLE_GOOGLE']:
             if 'STORMPATH_SOCIAL' in config:
