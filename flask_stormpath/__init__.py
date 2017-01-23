@@ -175,8 +175,7 @@ class StormpathManager(object):
             'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
 
         # Social login configuration.
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_SOCIAL', {})
+        config.setdefault('STORMPATH_SOCIAL', {})
 
         # Cookie configuration.
         config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
