@@ -169,8 +169,7 @@ class StormpathManager(object):
         config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
 
         # Cache configuration.
-        # FIXME: this breaks the code because it's not in the spec
-        # config.setdefault('STORMPATH_CACHE', None)
+        config.setdefault('STORMPATH_CACHE', None)
 
         # Configure templates.  These template settings control which
         # templates are used to render the Flask-Stormpath views.
@@ -212,8 +211,7 @@ class StormpathManager(object):
             secret=self.app.config['stormpath']
             ['client']['apiKey']['secret'],
             user_agent=user_agent,
-            # FIXME: read cache from config
-            # cache_options=self.app.config['STORMPATH_CACHE'],
+            cache_options=self.app.config['STORMPATH_CACHE'],
         )
 
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
