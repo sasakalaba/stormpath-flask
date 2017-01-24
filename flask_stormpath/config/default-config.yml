@@ -89,7 +89,7 @@ stormpath:
           # The user will be redirected to the correct subdomain to finish the
           # workflow.
           organizationNameKey:
-            enabled: null
+            enabled: false
             visible: true
             label: "Organization"
             placeholder: "e.g. my-company"
@@ -188,7 +188,7 @@ stormpath:
           # The user will be redirected to the correct subdomain to finish the
           # workflow.
           organizationNameKey:
-            enabled: null
+            enabled: false
             visible: true
             label: "Organization"
             placeholder: "e.g. my-company"
