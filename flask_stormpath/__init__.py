@@ -18,10 +18,14 @@ from stormpath.client import Client
 from stormpath.error import Error as StormpathError
 from stormpath_config.loader import ConfigLoader
 from stormpath_config.strategies import (
-    LoadEnvConfigStrategy, LoadFileConfigStrategy, LoadAPIKeyConfigStrategy,
-    LoadAPIKeyFromConfigStrategy, ValidateClientConfigStrategy,
+    LoadEnvConfigStrategy,
+    LoadFileConfigStrategy,
+    LoadAPIKeyConfigStrategy,
+    LoadAPIKeyFromConfigStrategy,
+    ValidateClientConfigStrategy,
     EnrichClientFromRemoteConfigStrategy,
-    EnrichIntegrationFromRemoteConfigStrategy)
+    EnrichIntegrationFromRemoteConfigStrategy,
+    MoveAPIKeyToClientAPIKeyStrategy)
 
 from werkzeug.local import LocalProxy
 from .context_processors import user_context_processor
@@ -152,7 +156,7 @@ class StormpathManager(object):
             ],
             post_processing_strategies=[
                 LoadAPIKeyFromConfigStrategy(),
-                # MoveAPIKeyToClientAPIKeyStrategy()
+                MoveAPIKeyToClientAPIKeyStrategy()
             ],
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
