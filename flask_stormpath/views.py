@@ -185,6 +185,7 @@ class RegisterView(StormpathView):
 
         # Create the user account on Stormpath.  If this fails, an
         # exception will be raised.
+        self.data.pop('csrf_token', None)
         account = User.create(**self.data)
 
         # If verifyEmail is enabled, send a verification email.
