@@ -51,6 +51,9 @@ class StormpathView(View):
                 self.request_accept_types[0][0] == '*/*'):
             self.accept_header = self.allowed_types[0]
 
+        # Set a default value for the error redirect uri.
+        self.error_redirect_url = None
+
         # If the request type is specified, but not html or json, mark the
         # invalid_request flag.
         if self.accept_header not in self.allowed_types:
@@ -120,6 +123,10 @@ class StormpathView(View):
                 return redirect(invalid_request_uri)
             else:
                 abort(501)
+
+        # Redirect to an error uri if one is set.
+        if self.error_redirect_url:
+            return redirect(self.error_redirect_url)
 
         if request.method == 'POST':
             # If we received a POST request with valid information, we'll
@@ -332,7 +339,9 @@ class ChangePasswordView(StormpathView):
                 current_app.stormpath_manager.application.
                 verify_password_reset_token(request.args.get('sptoken')))
         except StormpathError:
-            abort(400)
+            self.error_redirect_url = config['errorUri']
+            if not self.error_redirect_url:
+                self.error_redirect_url = '/'
 
     def process_stormpath_error(self, error):
         # If the error message contains 'https', it means something

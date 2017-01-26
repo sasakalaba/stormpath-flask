@@ -1121,11 +1121,27 @@ class TestChange(StormpathViewTestCase):
             resp = c.get(self.reset_password_url)
             self.assertEqual(resp.status_code, 200)
 
-        # Ensure that a missing token will return a 400 error
+        # Ensure that a missing token will redirect to errorUri specified in
+        # the config.
         with self.app.test_client() as c:
             # Ensure request.GET will render the change_password.html template.
             resp = c.get('/change')
-            self.assertEqual(resp.status_code, 400)
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(
+                'You should be redirected automatically to target URL: ' +
+                '<a href="%s">' % self.app.config[
+                    'stormpath']['web']['changePassword']['errorUri'] +
+                '/forgot?status=invalid_sptoken</a>.' in
+                resp.data.decode('utf-8'))
+
+            # If errorUri is empty, we will redirect back to index page.
+            self.app.config[
+                'stormpath']['web']['changePassword']['errorUri'] = None
+            resp = c.get('/change')
+            self.assertEqual(resp.status_code, 302)
+            self.assertTrue(
+                'You should be redirected automatically to target URL: ' +
+                '<a href="%s">' % '/' + '/</a>.' in resp.data.decode('utf-8'))
 
     def test_password_changed_and_logged_in(self):
         with self.app.test_client() as c:
