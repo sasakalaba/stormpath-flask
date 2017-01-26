@@ -267,10 +267,10 @@ class TestCheckSettings(StormpathTestCase):
         self.manager.check_settings(self.app.config)
 
         # Ensure that an application without an account store will raise an
-        #  error.
-        self.app.config['stormpath']['web']['register']['enabled'] = False
+        # error.
         app = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
         app.default_account_store_mapping.delete()
+        self.manager.application.refresh()
         self.assertRaises(
             ConfigurationError, self.manager.check_settings, self.app.config)

@@ -255,9 +255,9 @@ class StormpathManager(object):
                 raise ConfigurationError(
                     'You must define your Facebook app settings.')
 
-        if not all([
-                config['stormpath']['web']['register']['enabled'],
-                self.application.default_account_store_mapping]):
+        if (
+                config['stormpath']['web']['register']['enabled'] and
+                not self.application.default_account_store_mapping):
             raise ConfigurationError(
                 "No default account store is mapped to the specified "
                 "application. A default account store is required for "
