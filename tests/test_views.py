@@ -361,6 +361,14 @@ class TestHelperMethods(StormpathViewTestCase):
             self.assertEqual(
                 json_response['message'], 'This is a user message.')
 
+            # Ensure that certain error codes will return error.message, not
+            # error.user_message.
+            error.code = 7102
+            response = self.view.process_stormpath_error(error)
+            json_response = json.loads(response.response[0].decode())
+            self.assertEqual(
+                json_response['message'], 'This is a default message.')
+
     def test_csrf_disabled_on_json(self):
         # Ensure that JSON requests have CSRF disabled.
 
@@ -792,6 +800,21 @@ class TestLogin(StormpathViewTestCase):
 
             self.assertTrue(
                 'Invalid username or password.' in resp.data.decode('utf-8'))
+            self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
+
+            # Ensure that an error is raised if the account referencing
+            # login email address is not verified.
+            self.user.status = 'UNVERIFIED'
+            self.user.save()
+
+            resp = c.post('/login', data={
+                'login': 'rdegges',
+                'password': 'hilol',
+            })
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(
+                'Login attempt failed because the Account is not verified.' in
+                resp.data.decode('utf-8'))
             self.assertFalse("developerMessage" in resp.data.decode('utf-8'))
 
     def test_redirect_to_login_or_register_url(self):

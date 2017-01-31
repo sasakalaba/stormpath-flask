@@ -162,6 +162,7 @@ class User(Account):
         """
         _user = current_app.stormpath_manager.application.authenticate_account(
             login, password).account
+        _user.refresh()
         _user.__class__ = User
 
         return _user

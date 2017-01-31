@@ -92,9 +92,13 @@ class StormpathView(View):
     def process_stormpath_error(self, error):
         """ Check for StormpathErrors. """
 
-        # Sets an error message.
-        error_message = (
-            error.user_message if error.user_message else error.message)
+        # If an error.user_message is inadequate, then catch regular message.
+        # Otherwise try to catch user_message.
+        if error.code in [7102, ]:
+            error_message = error.message
+        else:
+            error_message = (
+                error.user_message if error.user_message else error.message)
 
         if self.request_wants_json:
             status_code = error.status if error.status else 400
