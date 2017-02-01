@@ -372,12 +372,13 @@ class TestHelperMethods(StormpathViewTestCase):
     def test_csrf_disabled_on_json(self):
         # Ensure that JSON requests have CSRF disabled.
 
+        self.app.config['WTF_CSRF_ENABLED'] = True
         with self.app.test_client() as c:
             # Ensure that HTML will have CSRF enabled.
             c.get('/')
             with self.app.app_context():
                 self.view = StormpathView(self.config)
-            self.assertTrue(self.view.form.csrf_enabled)
+            self.assertTrue(self.view.form.meta.csrf)
 
             # Ensure that JSON will have CSRF disabled.
             self.app.wsgi_app = HttpAcceptWrapper(
@@ -385,7 +386,7 @@ class TestHelperMethods(StormpathViewTestCase):
             c.get('/')
             with self.app.app_context():
                 self.view = StormpathView(self.config)
-            self.assertFalse(self.view.form.csrf_enabled)
+            self.assertFalse(self.view.form.meta.csrf)
 
             # Ensure that non JSON will have CSRF enabled.
             self.app.wsgi_app = HttpAcceptWrapper(
@@ -393,7 +394,7 @@ class TestHelperMethods(StormpathViewTestCase):
             c.get('/')
             with self.app.app_context():
                 self.view = StormpathView(self.config)
-            self.assertTrue(self.view.form.csrf_enabled)
+            self.assertTrue(self.view.form.meta.csrf)
 
 
 class TestRegister(StormpathViewTestCase):
