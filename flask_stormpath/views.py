@@ -20,6 +20,7 @@ from stormpath.resources import Expansion
 from . import StormpathError
 from .forms import StormpathForm
 from .models import User
+from .request_processors import get_accept_header, request_wants_json
 from facebook import get_user_from_cookie
 
 
@@ -38,18 +39,8 @@ class StormpathView(View):
 
     def __init__(self, config, *args, **kwargs):
         self.config = config
-
-        # Fetch the request type and match it against our allowed types.
+        self.accept_header = get_accept_header()
         self.allowed_types = current_app.config['stormpath']['web']['produces']
-        self.request_accept_types = request.accept_mimetypes
-        self.accept_header = self.request_accept_types.best_match(
-            self.allowed_types)
-
-        # If no accept types are specified, or the preferred accept type is
-        # */*, response type will be the first element of self.allowed_types.
-        if (not self.request_accept_types or
-                self.request_accept_types[0][0] == '*/*'):
-            self.accept_header = self.allowed_types[0]
 
         # Set a default value for the error redirect uri.
         self.error_redirect_url = None
@@ -62,7 +53,7 @@ class StormpathView(View):
             self.invalid_request = False
 
         # Build the form
-        if self.request_wants_json:
+        if request_wants_json():
             form_kwargs = {'meta': {'csrf': False}}
         else:
             form_kwargs = {
@@ -80,11 +71,6 @@ class StormpathView(View):
             stormpath_response = render_template(template, **data)
         return stormpath_response
 
-    @property
-    def request_wants_json(self):
-        """ Check if request wants json. """
-        return self.accept_header == 'application/json'
-
     def process_request(self):
         """ Custom logic specialized for each view. Must be implemented in
             the subclass. """
@@ -101,7 +87,7 @@ class StormpathView(View):
             error_message = (
                 error.user_message if error.user_message else error.message)
 
-        if self.request_wants_json:
+        if request_wants_json():
             status_code = error.status if error.status else 400
             return self.make_stormpath_response(
                 data=json.dumps({
@@ -139,7 +125,7 @@ class StormpathView(View):
 
             if not self.form.validate_on_submit():
                 # If form.data is not valid, return error messages.
-                if self.request_wants_json:
+                if request_wants_json():
                     return self.make_stormpath_response(
                         data=json.dumps({
                             'status': 400,
@@ -156,7 +142,7 @@ class StormpathView(View):
                     if stormpath_error:
                         return stormpath_error
 
-        if self.request_wants_json:
+        if request_wants_json():
             return self.make_stormpath_response(data=self.form.json)
 
         return self.make_stormpath_response(
@@ -213,7 +199,7 @@ class RegisterView(StormpathView):
                 'stormpath']['web']['verifyEmail']['enabled']):
             login_user(account, remember=True)
 
-        if self.request_wants_json:
+        if request_wants_json():
             return self.make_stormpath_response(data=account.to_json())
 
         # Set redirect priority
@@ -255,7 +241,7 @@ class LoginView(StormpathView):
         # query parameter, or the Stormpath login nextUri setting.
         login_user(account, remember=True)
 
-        if self.request_wants_json:
+        if request_wants_json():
             return self.make_stormpath_response(data=current_user.to_json())
 
         # Set redirect priority
@@ -310,7 +296,7 @@ class ForgotPasswordView(StormpathView):
         # this user, we'll display a success page prompting the user
         # to check their inbox to complete the password reset process.
 
-        if self.request_wants_json:
+        if request_wants_json():
             return self.make_stormpath_response(
                 data=json.dumps({
                     'status': 200,
@@ -365,7 +351,7 @@ class ChangePasswordView(StormpathView):
         account = User.from_login(self.account.email, self.form.password.data)
         login_user(account, remember=True)
 
-        if self.request_wants_json:
+        if request_wants_json():
             return self.make_stormpath_response(data=current_user.to_json())
 
         return self.make_stormpath_response(
@@ -403,7 +389,7 @@ class VerifyEmailView(StormpathView):
         if request.method == 'POST':
             # If form.data is not valid, return error messages.
             if not self.form.validate_on_submit():
-                if self.request_wants_json:
+                if request_wants_json():
                     return self.make_stormpath_response(
                         data=json.dumps({
                             'status': 400,
@@ -425,7 +411,7 @@ class VerifyEmailView(StormpathView):
                     (current_app.stormpath_manager.application.
                         verification_emails.resend(account, account.directory))
 
-                if self.request_wants_json:
+                if request_wants_json():
                         return self.make_stormpath_response(
                             data=json.dumps({}))
                 redirect_url = self.config['unverifiedUri']
@@ -448,13 +434,13 @@ class VerifyEmailView(StormpathView):
                         'stormpath']['web']['register']['autoLogin']:
                     login_user(account, remember=True)
                     account.refresh()
-                    if self.request_wants_json:
+                    if request_wants_json():
                         return self.make_stormpath_response(
                             data=account.to_json())
                     redirect_url = current_app.config[
                         'stormpath']['web']['login']['nextUri']
                 else:
-                    if self.request_wants_json:
+                    if request_wants_json():
                         return self.make_stormpath_response(
                             data=json.dumps({}))
                     redirect_url = self.config['nextUri']
@@ -464,7 +450,7 @@ class VerifyEmailView(StormpathView):
                 # form that will resend an sptoken to the new email provided.
 
                 # Sets an error message.
-                if self.request_wants_json:
+                if request_wants_json():
                     if error.status == 400:
                         error_message = 'sptoken parameter not provided.'
                     else:

@@ -26,7 +26,7 @@
               {% endif %}
             {% endwith %}
             <form class="login-form form-horizontal" role="form" method="post">
-              {{ form.csrf_token }}
+              {{ form.hidden_tag() }}
               {% for field in form if field.widget.input_type != 'hidden' %}
                 <div class="form-group group-email">
                   <label class="{% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}col-sm-12{% else %}col-sm-4{% endif %}">{{ field.label.text }}</label>

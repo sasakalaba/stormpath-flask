@@ -29,6 +29,7 @@ from stormpath_config.strategies import (
 
 from werkzeug.local import LocalProxy
 from .context_processors import user_context_processor
+from .request_processors import request_wants_json
 from .models import User
 from .settings import StormpathSettings
 from .errors import ConfigurationError
@@ -79,18 +80,25 @@ class StormpathManager(object):
     specific apps, so you can create one in the main body of your code and
     then bind it to your app in a factory function.
     """
-    def __init__(self, app=None):
+    def __init__(self, app=None, csrf=None):
         """
         Initialize this extension.
 
         :param obj app: (optional) The Flask app.
+        :param obj csrf: (optional) CSRFProtect object.
         """
         self.app = app
+        self.csrf = csrf
 
         # If the user specifies an app, let's configure go ahead and handle all
         # configuration stuff for the user's app.
         if app is not None:
             self.init_app(app)
+
+            @app.before_request
+            def check_csrf():
+                if self.csrf and not request_wants_json():
+                    csrf.protect()
 
     def init_app(self, app):
         """
@@ -161,6 +169,10 @@ class StormpathManager(object):
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
 
+        # Set csrf default check to False, since our StormpathManager applies
+        # custom logic for applying csrf tokens.
+        config.setdefault('WTF_CSRF_CHECK_DEFAULT', False)
+
         # Which fields should be displayed when registering new users?
         config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
         config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
@@ -202,8 +214,7 @@ class StormpathManager(object):
         # Instantiate client with apiKey id and secret from config.
         self.client = Client(
             id=self.app.config['stormpath']['client']['apiKey']['id'],
-            secret=self.app.config['stormpath']
-            ['client']['apiKey']['secret'],
+            secret=self.app.config['stormpath']['client']['apiKey']['secret'],
             user_agent=user_agent,
             cache_options=self.app.config['STORMPATH_CACHE'],
         )

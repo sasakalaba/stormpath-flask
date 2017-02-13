@@ -186,21 +186,6 @@ class TestHelperMethods(StormpathViewTestCase):
             with self.app.app_context():
                 self.view = StormpathView(self.config)
 
-    def test_request_wants_json(self):
-        # Ensure that request_wants_json returns False if 'application/json'
-        # accept header isn't present.
-        self.view.accept_header = 'text/html'
-        self.assertFalse(self.view.request_wants_json)
-
-        self.view.accept_header = None
-        self.assertFalse(self.view.request_wants_json)
-
-        self.view.accept_header = 'foo/bar'
-        self.assertFalse(self.view.request_wants_json)
-
-        self.view.accept_header = 'application/json'
-        self.assertTrue(self.view.request_wants_json)
-
     def test_make_stormpath_response(self):
         data = {'foo': 'bar'}
         with self.app.test_client() as c:
@@ -331,7 +316,8 @@ class TestHelperMethods(StormpathViewTestCase):
             self.assertEqual(response.content_type, 'text/html')
 
     @patch('flask_stormpath.views.flash')
-    def test_process_stormpath_error(self, flash):
+    @patch('flask_stormpath.request_processors.get_accept_header')
+    def test_process_stormpath_error(self, accept_header, flash):
         # Ensure that process_stormpath_error properly parses the error
         # message and returns a proper response (json or html).
 
@@ -340,12 +326,13 @@ class TestHelperMethods(StormpathViewTestCase):
         # Ensure that process_stormpath_error will return a proper response.
         with self.app.test_request_context():
             # HTML (or other non JSON) response.
+            accept_header.return_value = 'text/html'
             response = self.view.process_stormpath_error(error)
             self.assertIsNone(response)
             self.assertEqual(flash.call_count, 1)
 
             # JSON response.
-            self.view.accept_header = 'application/json'
+            accept_header.return_value = 'application/json'
             response = self.view.process_stormpath_error(error)
             self.assertEqual(
                 response.headers['Content-Type'], 'application/json')
