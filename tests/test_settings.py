@@ -6,7 +6,14 @@ from unittest import skip
 from flask_stormpath.errors import ConfigurationError
 from flask_stormpath.settings import (
     StormpathSettings)
+from flask_stormpath import __version__ as stormpath_flask_version
+from flask import __version__ as flask_version
 from .helpers import StormpathTestCase
+
+try:
+    from mock import MagicMock, patch
+except ImportError:
+    from unittest.mock import MagicMock, patch
 
 
 class TestInitSettings(StormpathTestCase):
@@ -170,6 +177,37 @@ class TestInitSettings(StormpathTestCase):
             'givenName']['enabled'])
         self.assertTrue(
             settings['STORMPATH_WEB_REGISTER_FORM_FIELDS_GIVEN_NAME_ENABLED'])
+
+    @patch('requests.sessions.PreparedRequest')
+    def test_user_agent(self, PreparedRequest):
+        # Ensure that every request sent to the Stormpath API has a proper
+        # user agent header.
+
+        # Set mock.
+        request_mock = PreparedRequest.return_value.prepare
+        request_mock.return_value = MagicMock()
+
+        # Attempt a login using email and password.
+        with self.app.test_client() as c:
+            c.post('/login', data={
+                'login': 'r@rdegges.com',
+                'password': 'woot1LoveCookies!',
+            })
+
+        # Ensure our login generated a request.
+        self.assertEqual(request_mock.call_count, 1)
+        call = request_mock._mock_call_args_list[0]
+
+        # Extract the User-Agent header.
+        user_agent_header = tuple(call)[1]['headers']['User-Agent']
+
+        # Ensure that stormpath-flask and flask version are included in
+        # user-agent string.
+        stormpath_flask_version_str = (
+            'stormpath-flask/%s' % stormpath_flask_version)
+        flask_version_str = 'flask/%s' % flask_version
+        self.assertTrue(stormpath_flask_version_str in user_agent_header)
+        self.assertTrue(flask_version_str in user_agent_header)
 
 
 class TestCheckSettings(StormpathTestCase):
