@@ -58,11 +58,12 @@ class StormpathForm(FlaskForm):
                 json_field['required'] = field_list[field]['required']
 
                 # Apply widgets.
-                if not field_list[field]['visible']:
-                    widget = HiddenInput()
-                else:
+                if field_list[field].get('visible', True):
                     widget = None
-                json_field['visible'] = field_list[field]['visible']
+                    json_field['visible'] = True
+                else:
+                    widget = HiddenInput()
+                    json_field['visible'] = False
 
                 # Apply field classes.
                 if field_list[field]['type'] == 'password':

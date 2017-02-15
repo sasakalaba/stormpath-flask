@@ -80,13 +80,11 @@ class TestStormpathForm(StormpathTestCase):
 
     def test_login_form_building(self):
         form_config = self.app.config['stormpath']['web']['login']['form']
-        form_config['fields']['organizationNameKey']['enabled'] = True
         self.assertFormBuilding(form_config)
 
     def test_registration_form_building(self):
         form_config = self.app.config['stormpath']['web']['register']['form']
         form_config['fields']['confirmPassword']['enabled'] = True
-        form_config['fields']['organizationNameKey']['enabled'] = True
         self.assertFormBuilding(form_config)
 
     def test_forgot_password_form_building(self):
@@ -229,13 +227,6 @@ class TestStormpathForm(StormpathTestCase):
                 'label': 'Username or Email',
                 'placeholder': 'Username or Email'},
             {
-                'label': 'Organization',
-                'name': 'organization_name_key',
-                'placeholder': 'e.g. my-company',
-                'required': True,
-                'type': 'text',
-                'visible': True},
-            {
                 'name': 'password',
                 'type': 'password',
                 'required': True,
@@ -247,7 +238,6 @@ class TestStormpathForm(StormpathTestCase):
         # Ensure that json property returns a proper json value.
         with self.app.app_context():
             form_config = self.app.config['stormpath']['web']['login']['form']
-            form_config['fields']['organizationNameKey']['enabled'] = True
             form = StormpathForm.specialize_form(form_config)()
 
             # Construct field settings from the config.
@@ -256,6 +246,7 @@ class TestStormpathForm(StormpathTestCase):
                 field = form_config['fields'][key].copy()
                 field.pop('enabled')
                 field['name'] = Resource.from_camel_case(key)
+                field['visible'] = True
                 field_specs.append(field)
 
             # Ensure that json return value is the same as config settings.

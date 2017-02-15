@@ -45,6 +45,7 @@ class StormpathViewTestCase(StormpathTestCase):
             if field['enabled']:
                 field.pop('enabled')
                 field['name'] = Resource.from_camel_case(key)
+                field['visible'] = True
                 form_fields.append(field)
 
         # Sort and compare form fields
@@ -123,7 +124,7 @@ class StormpathViewTestCase(StormpathTestCase):
         # Create a new updated config file from the default one.
         config, ind, bsi = util.load_yaml_guess_indent(
             open(self.app.config['STORMPATH_CONFIG_PATH']))
-        config['stormpath']['web'][view_name]['enabled'] = False
+        config['web'][view_name]['enabled'] = False
         config_name = 'test-config-%s' % view_name
         round_trip_dump(
             config, open(create_config_path(config_name, default=False), 'w'),
