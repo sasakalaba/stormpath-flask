@@ -1,7 +1,7 @@
 """Description here."""
 
 from flask import request, current_app
-from .errors import ConfigurationError
+from stormpath_config.errors import ConfigurationError
 
 
 def get_accept_header():

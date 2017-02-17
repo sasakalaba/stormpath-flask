@@ -32,7 +32,6 @@ from .context_processors import user_context_processor
 from .request_processors import request_wants_json
 from .models import User
 from .settings import StormpathSettings
-from .errors import ConfigurationError
 from .views import (
     RegisterView,
     LoginView,
@@ -116,10 +115,6 @@ class StormpathManager(object):
         # Initialize all of the Flask-Stormpath configuration variables and
         # settings.
         self.init_settings(app.config)
-
-        # Check our user defined settings to ensure Flask-Stormpath is properly
-        # configured.
-        self.check_settings(app.config)
 
         # Initialize the Flask-Login extension.
         self.init_login(app)
@@ -228,74 +223,6 @@ class StormpathManager(object):
 
         self.application = self.client.applications.get(
             self.app.config['stormpath']['application']['href'])
-
-    def check_settings(self, config):
-        """
-        Ensure the user-specified settings are valid.
-
-        This will raise a ConfigurationError if anything mandatory is not
-        specified.
-
-        :param dict config: The Flask app config.
-        """
-
-        if config['STORMPATH_ENABLE_GOOGLE']:
-            if 'STORMPATH_SOCIAL' in config:
-                google_config = config['STORMPATH_SOCIAL'].get('GOOGLE')
-            else:
-                google_config = None
-
-            if not google_config or not all([
-                google_config.get('client_id'),
-                google_config.get('client_secret'),
-            ]):
-                raise ConfigurationError(
-                    'You must define your Google app settings.')
-
-        if config['STORMPATH_ENABLE_FACEBOOK']:
-            if 'STORMPATH_SOCIAL' in config:
-                facebook_config = config['STORMPATH_SOCIAL'].get('FACEBOOK')
-            else:
-                facebook_config = None
-
-            if not facebook_config or not all([
-                facebook_config,
-                facebook_config.get('app_id'),
-                facebook_config.get('app_secret'),
-            ]):
-                raise ConfigurationError(
-                    'You must define your Facebook app settings.')
-
-        if (
-                config['stormpath']['web']['register']['enabled'] and
-                not self.application.default_account_store_mapping):
-            raise ConfigurationError(
-                "No default account store is mapped to the specified "
-                "application. A default account store is required for "
-                "registration.")
-
-        # FIXME: this obstructs the verifyEmail view, so it will be commented
-        # out for now.
-        # if all([config['stormpath']['web']['register']['autoLogin'],
-        #         config['stormpath']['web']['verifyEmail']['enabled']]):
-        #     raise ConfigurationError(
-        #         "Invalid configuration: stormpath.web.register.autoLogin "
-        #         "is true, but the default account store of the "
-        #         "specified application has the email verification "
-        #         "workflow enabled. Auto login is only possible if email "
-        #         "verification is disabled. "
-        #         "Please disable this workflow on this application's default "
-        #         "account store.")
-
-        if config['STORMPATH_COOKIE_DOMAIN'] and not isinstance(
-                config['STORMPATH_COOKIE_DOMAIN'], str):
-            raise ConfigurationError(
-                'STORMPATH_COOKIE_DOMAIN must be a string.')
-
-        if config['STORMPATH_COOKIE_DURATION'] and not isinstance(
-                config['STORMPATH_COOKIE_DURATION'], timedelta):
-            raise ConfigurationError(
-                'STORMPATH_COOKIE_DURATION must be a timedelta object.')
 
     def init_login(self, app):
         """
