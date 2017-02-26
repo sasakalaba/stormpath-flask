@@ -251,11 +251,11 @@ class User(Account):
         """
         provider = {
             'client_id': current_app.config[
-                'STORMPATH_SOCIAL']['GOOGLE']['client_id'],
+                'stormpath']['web']['social']['google']['clientId'],
             'client_secret': current_app.config[
-                'STORMPATH_SOCIAL']['GOOGLE']['client_secret'],
+                'stormpath']['web']['social']['google']['clientSecret'],
             'redirect_uri': request.url_root[:-1] + current_app.config[
-                'STORMPATH_GOOGLE_LOGIN_URL'],
+                'stormpath']['web']['social']['google']['login_url'],
             'provider_id': Provider.GOOGLE,
         }
         return self.from_social('google', code, provider)
@@ -273,9 +273,9 @@ class User(Account):
         """
         provider = {
             'client_id': current_app.config[
-                'STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
+                'stormpath']['web']['social']['facebook']['clientId'],
             'client_secret': current_app.config[
-                'STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
+                'stormpath']['web']['social']['facebook']['clientId'],
             'provider_id': Provider.FACEBOOK,
         }
         return self.from_social('facebook', access_token, provider)

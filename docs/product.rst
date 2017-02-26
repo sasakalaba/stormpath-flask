@@ -480,12 +480,12 @@ Next, copy the following code into ``templates/login.html``::
     </form>
 
     {# If social login is enabled, display social login buttons. #}
-    {% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}
+    {% if config['stormpath']['web']['social']['facebook']['enabled'] or config['stormpath']['web']['social']['google']['enabled'] %}
       <p>Or, log in using a social provider.</p>
-      {% if config['STORMPATH_ENABLE_FACEBOOK'] %}
+      {% if config['stormpath']['web']['social']['facebook']['enabled'] %}
         {% include "flask_stormpath/facebook_login_form.html" %}
       {% endif %}
-      {% if config['STORMPATH_ENABLE_GOOGLE'] %}
+      {% if config['stormpath']['web']['social']['google']['enabled'] %}
         {% include "flask_stormpath/google_login_form.html" %}
       {% endif %}
     {% endif %}

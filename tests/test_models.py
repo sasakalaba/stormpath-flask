@@ -346,12 +346,18 @@ class TestFacebookLogin(StormpathTestCase, SocialMethodsTestMixin):
     def setUp(self):
         super(TestFacebookLogin, self).setUp()
 
-        # Set a provider
+        # Set a provider.
         self.provider = {
             'client_id': environ.get('FACEBOOK_API_ID'),
             'client_secret': environ.get('FACEBOOK_API_SECRET'),
             'provider_id': Provider.FACEBOOK,
         }
+
+        # Set client ID and secret.
+        self.app.config['stormpath']['web']['social']['facebook'][
+            'clientId'] = environ.get('FACEBOOK_API_ID')
+        self.app.config['stormpath']['web']['social']['facebook'][
+            'clientSecret'] = environ.get('FACEBOOK_API_SECRET')
 
 
 class TestGoogleLogin(StormpathTestCase, SocialMethodsTestMixin):
@@ -374,3 +380,9 @@ class TestGoogleLogin(StormpathTestCase, SocialMethodsTestMixin):
                     self.app.config['STORMPATH_GOOGLE_LOGIN_URL']),
                 'provider_id': Provider.GOOGLE,
             }
+
+        # Set client ID and secret.
+        self.app.config['stormpath']['web']['social']['google'][
+            'clientId'] = environ.get('GOOGLE_CLIENT_ID')
+        self.app.config['stormpath']['web']['social']['google'][
+            'clientSecret'] = environ.get('GOOGLE_CLIENT_SECRET')

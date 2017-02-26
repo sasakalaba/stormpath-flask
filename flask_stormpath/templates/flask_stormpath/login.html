@@ -1,4 +1,4 @@
-{% extends config['STORMPATH_BASE_TEMPLATE'] %}
+{% extends config['stormpath']['base_template'] %}
 
 {% block title %}Log In{% endblock %}
 {% block description %}Log into your account!{% endblock %}
@@ -9,7 +9,7 @@
     <div class="va-wrapper">
       <div class="view login-view container">
         <div class="box row">
-          <div class="email-password-area col-xs-12 {% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}small col-sm-8{% else %}large col-sm-12{% endif %}">
+          <div class="email-password-area col-xs-12 {% if config['stormpath']['web']['social']['facebook']['enabled'] or config['stormpath']['web']['social']['google']['enabled'] %}small col-sm-8{% else %}large col-sm-12{% endif %}">
             <div class="header">
               <span>Log In{% if config['stormpath']['web']['register']['enabled'] %} or {% endif %}</span>
               {% if config['stormpath']['web']['register']['enabled'] %}
@@ -29,8 +29,8 @@
               {{ form.hidden_tag() }}
               {% for field in form if field.widget.input_type != 'hidden' %}
                 <div class="form-group group-email">
-                  <label class="{% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}col-sm-12{% else %}col-sm-4{% endif %}">{{ field.label.text }}</label>
-                  <div class="{% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}col-sm-12{% else %}col-sm-8{% endif %}">
+                  <label class="{% if config['stormpath']['web']['social']['facebook']['enabled'] or config['stormpath']['web']['social']['google']['enabled'] %}col-sm-12{% else %}col-sm-4{% endif %}">{{ field.label.text }}</label>
+                  <div class="{% if config['stormpath']['web']['social']['facebook']['enabled'] or config['stormpath']['web']['social']['google']['enabled'] %}col-sm-12{% else %}col-sm-8{% endif %}">
                       {% if field.flags.required %}
                         {{ field(autofocus='true', class='form-control', required='true') }}
                       {% else %}
@@ -44,14 +44,14 @@
               </div>
             </form>
           </div>
-          {% if config['STORMPATH_ENABLE_FACEBOOK'] or config['STORMPATH_ENABLE_GOOGLE'] %}
+          {% if config['stormpath']['web']['social']['facebook']['enabled'] or config['stormpath']['web']['social']['google']['enabled'] %}
             <div class="social-area col-xs-12 col-sm-4">
               <div class="header">&nbsp;</div>
               <label>Easy 1-click login:</label>
-              {% if config['STORMPATH_ENABLE_FACEBOOK'] %}
+              {% if config['stormpath']['web']['social']['facebook']['enabled'] %}
                 {% include "flask_stormpath/facebook_login_form.html" %}
               {% endif %}
-              {% if config['STORMPATH_ENABLE_GOOGLE'] %}
+              {% if config['stormpath']['web']['social']['google']['enabled'] %}
                 {% include "flask_stormpath/google_login_form.html" %}
               {% endif %}
             </div>

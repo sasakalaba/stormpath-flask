@@ -6,6 +6,7 @@ import os
 from flask_stormpath.models import User
 from .helpers import StormpathTestCase, HttpAcceptWrapper, create_config_path
 from stormpath.resources import Resource
+from stormpath.resources.provider import Provider
 from stormpath.error import Error as StormpathError
 from flask_stormpath.views import (
     StormpathView, FacebookLoginView, GoogleLoginView, VerifyEmailView, View)
@@ -1792,6 +1793,16 @@ class TestMe(StormpathViewTestCase):
 class TestFacebookLogin(StormpathViewTestCase):
     """ Test our Facebook login view. """
 
+    def setUp(self):
+        super(TestFacebookLogin, self).setUp()
+
+        provider = {
+            'client_id': os.environ.get('FACEBOOK_API_ID'),
+            'client_secret': os.environ.get('FACEBOOK_API_SECRET'),
+            'provider_id': Provider.FACEBOOK,
+        }
+        self.create_social_directory(provider=provider, social_name='facebook')
+
     @patch('flask_stormpath.views.get_user_from_cookie')
     def test_access_token(self, access_token_mock):
         # Ensure that proper access code fetching will continue processing
@@ -1877,6 +1888,21 @@ class TestFacebookLogin(StormpathViewTestCase):
 
 class TestGoogleLogin(StormpathViewTestCase):
     """ Test our Google login view. """
+
+    def setUp(self):
+        super(TestGoogleLogin, self).setUp()
+
+        provider = {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+            'redirect_uri': (
+                    ''.join(
+                        (os.environ.get('ROOT_URL'), ':',
+                         os.environ.get('PORT'))) +
+                    self.app.config['STORMPATH_GOOGLE_LOGIN_URL']),
+            'provider_id': Provider.GOOGLE,
+        }
+        self.create_social_directory(provider=provider, social_name='google')
 
     def test_access_token(self):
         # Ensure that proper access code fetching will continue processing

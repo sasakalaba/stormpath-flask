@@ -14,6 +14,7 @@ from flask import Flask
 from flask_stormpath import StormpathManager, StormpathError, User
 from facebook import GraphAPI, GraphAPIError
 from stormpath.client import Client
+from stormpath.resources.provider import Provider
 from oauth2client.client import OAuth2WebServerFlow
 import requests
 import json
@@ -73,8 +74,36 @@ class StormpathTestCase(TestCase):
 
     def reinit_app(self):
         # Reinitializes our testing application.
+
         self.app = bootstrap_flask_app(self.application)
         self.manager = StormpathManager(self.app)
+
+        # Make sure our requests don't trigger a json response.
+        self.default_wsgi_app = self.app.wsgi_app
+        self.app.wsgi_app = HttpAcceptWrapper(
+            self.default_wsgi_app, self.html_header)
+
+    def create_social_directory(self, social_name=None, provider=None):
+        # Creates a stormpath social directory.
+        social_dir = (
+            self.app.stormpath_manager.client.directories.create({
+                'name': self.name + ' - ' + social_name,
+                'provider': provider
+            })
+        )
+
+        # Now we'll map the new directory to our application.
+        self.app.stormpath_manager.application.account_store_mappings.create(
+            {
+                'application': self.app.stormpath_manager.application,
+                'account_store': social_dir,
+                'list_index': 99,
+                'is_default_account_store': False,
+                'is_default_group_store': False,
+            }
+        )
+
+        self.reinit_app()
 
 
 class SignalReceiver(object):

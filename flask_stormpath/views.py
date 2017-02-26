@@ -611,8 +611,10 @@ class FacebookLoginView(SocialView):
         # 400 BAD REQUEST (since something horrible must have happened).
         facebook_user = get_user_from_cookie(
             request.cookies,
-            current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'],
-            current_app.config['STORMPATH_SOCIAL']['FACEBOOK']['app_secret'],
+            current_app.config[
+                'stormpath']['web']['social']['facebook']['clientId'],
+            current_app.config[
+                'stormpath']['web']['social']['facebook']['clientSecret'],
         )
         if facebook_user:
             access_token = facebook_user.get('access_token')

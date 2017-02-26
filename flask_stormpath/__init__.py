@@ -164,42 +164,13 @@ class StormpathManager(object):
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
 
-        # Set csrf default check to False, since our StormpathManager applies
-        # custom logic for applying csrf tokens.
-        config.setdefault('WTF_CSRF_CHECK_DEFAULT', False)
+        # Set default settings needed to init stormpath-flask.
+        self.set_default_settings(config)
 
-        # Which fields should be displayed when registering new users?
-        config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
-        config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
-
-        # Configure URL mappings.  These URL mappings control which URLs will
-        # be used by Flask-Stormpath views.
-        config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
-        config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
-
-        # Cache configuration.
-        config.setdefault('STORMPATH_CACHE', None)
-
-        # Configure templates.  These template settings control which
-        # templates are used to render the Flask-Stormpath views.
-        config.setdefault(
-            'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
-
-        # Social login configuration.
-        config.setdefault('STORMPATH_SOCIAL', {})
-
-        # Cookie configuration.
-        config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
-        config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
-
-        # Cookie name (this is not overridable by users, at least
-        # not explicitly).
-        config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')
-
-        for key, value in config.items():
-            if (key.startswith(config['stormpath'].STORMPATH_PREFIX) and
-                    key in config['stormpath']):
-                config['stormpath'][key] = value
+        # Move any settings with 'STORMPATH' prefix from main config to the
+        # stormpath config object.
+        move_stormpath_settings = MoveStormpathSettingsToStormpathConfig()
+        move_stormpath_settings.process(config)
 
         # Create our custom user agent.  This allows us to see which
         # version of this SDK are out in the wild!
@@ -211,7 +182,7 @@ class StormpathManager(object):
             id=self.app.config['stormpath']['client']['apiKey']['id'],
             secret=self.app.config['stormpath']['client']['apiKey']['secret'],
             user_agent=user_agent,
-            cache_options=self.app.config['STORMPATH_CACHE'],
+            cache_options=self.app.config['stormpath']['cache'],
         )
 
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
@@ -234,9 +205,9 @@ class StormpathManager(object):
         :param obj app: The Flask app.
         """
         app.config['REMEMBER_COOKIE_DURATION'] = app.config[
-            'STORMPATH_COOKIE_DURATION']
+            'stormpath']['cookie']['duration']
         app.config['REMEMBER_COOKIE_DOMAIN'] = app.config[
-            'STORMPATH_COOKIE_DOMAIN']
+            'stormpath']['cookie']['domain']
 
         app.login_manager = LoginManager(app)
         app.login_manager.user_callback = self.load_user
@@ -247,7 +218,7 @@ class StormpathManager(object):
 
         # Make this Flask session expire automatically.
         app.config['PERMANENT_SESSION_LIFETIME'] = app.config[
-            'STORMPATH_COOKIE_DURATION']
+            'stormpath']['cookie']['duration']
 
     def init_routes(self, app):
         """
@@ -333,18 +304,22 @@ class StormpathManager(object):
                 MeView.as_view('me'),
             )
 
-        if app.config['STORMPATH_ENABLE_GOOGLE']:
+        if app.config['stormpath']['web']['social']['google']['enabled']:
             app.add_url_rule(
                 os.path.join(
-                    base_path, app.config['STORMPATH_GOOGLE_LOGIN_URL']),
+                    base_path,
+                    app.config[
+                        'stormpath']['web']['social']['google']['login_url']),
                 'stormpath.google_login',
                 GoogleLoginView.as_view('google'),
             )
 
-        if app.config['STORMPATH_ENABLE_FACEBOOK']:
+        if app.config['stormpath']['web']['social']['facebook']['enabled']:
             app.add_url_rule(
                 os.path.join(
-                    base_path, app.config['STORMPATH_FACEBOOK_LOGIN_URL']),
+                    base_path,
+                    app.config[
+                        'stormpath']['web']['social']['facebook']['login_url']),
                 'stormpath.facebook_login',
                 FacebookLoginView.as_view('facebook'),
             )
@@ -381,3 +356,41 @@ class StormpathManager(object):
             return user
         except StormpathError:
             return None
+
+    def set_default_settings(self, config):
+        """
+        Sets default settings for crucial settings needed to run
+        Flask-Stormpath.
+        """
+
+        # Set csrf default check to False, since our StormpathManager applies
+        # custom logic for applying csrf tokens.
+        config.setdefault('WTF_CSRF_CHECK_DEFAULT', False)
+
+        # Which fields should be displayed when registering new users?
+        config.setdefault('STORMPATH_ENABLE_FACEBOOK', False)
+        config.setdefault('STORMPATH_ENABLE_GOOGLE', False)
+
+        # Configure URL mappings.  These URL mappings control which URLs will
+        # be used by Flask-Stormpath views.
+        config.setdefault('STORMPATH_GOOGLE_LOGIN_URL', '/google')
+        config.setdefault('STORMPATH_FACEBOOK_LOGIN_URL', '/facebook')
+
+        # Cache configuration.
+        config.setdefault('STORMPATH_CACHE', None)
+
+        # Configure templates.  These template settings control which
+        # templates are used to render the Flask-Stormpath views.
+        config.setdefault(
+            'STORMPATH_BASE_TEMPLATE', 'flask_stormpath/base.html')
+
+        # Social login configuration.
+        config.setdefault('STORMPATH_SOCIAL', {})
+
+        # Cookie configuration.
+        config.setdefault('STORMPATH_COOKIE_DOMAIN', None)
+        config.setdefault('STORMPATH_COOKIE_DURATION', timedelta(days=365))
+
+        # Cookie name (this is not overridable by users, at least
+        # not explicitly).
+        config.setdefault('REMEMBER_COOKIE_NAME', 'stormpath_token')

@@ -7,17 +7,17 @@
       if (response.status === 'connected') {
         var queryStr = window.location.search.replace('?', '');
         if (queryStr) {
-          window.location.replace('{{ config['STORMPATH_FACEBOOK_LOGIN_URL'] }}?' + queryStr);
+          window.location.replace('{{ config['stormpath']['web']['social']['facebook']['login_url'] }}?' + queryStr);
         } else {
-          window.location.replace('{{ config['STORMPATH_FACEBOOK_LOGIN_URL'] }}');
+          window.location.replace('{{ config['stormpath']['web']['social']['facebook']['login_url'] }}');
         }
       }
-    }, {scope: 'email{% if config["STORMPATH_SOCIAL"]["FACEBOOK"].get("scopes") %},{{ ",".join(config["STORMPATH_SOCIAL"]["FACEBOOK"]["scopes"]) }}{% endif %}'});
+    }, {scope: 'email{% if config["stormpath"]["web"]["social"]["facebook"].get("scopes") %},{{ ",".join(config["stormpath"]["web"]["social"]["facebook"]["scopes"]) }}{% endif %}'});
   }
 
   window.fbAsyncInit = function() {
     FB.init({
-      appId      : '{{ config['STORMPATH_SOCIAL']['FACEBOOK']['app_id'] }}',
+      appId      : '{{ config['stormpath']['web']['social']['facebook']['clientId'] }}',
       cookie     : true,
       xfbml      : true,
       version    : 'v2.0'
