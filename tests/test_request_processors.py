@@ -2,7 +2,7 @@
 
 from flask import current_app
 from .helpers import StormpathTestCase, HttpAcceptWrapper
-from flask_stormpath.errors import ConfigurationError
+from stormpath_config.errors import ConfigurationError
 from flask_stormpath.request_processors import (
     get_accept_header,
     request_wants_json
