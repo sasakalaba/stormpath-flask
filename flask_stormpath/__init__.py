@@ -185,6 +185,7 @@ class StormpathManager(object):
             cache_options=self.app.config['stormpath']['cache'],
         )
 
+        # Enrich config from API service, and validate crucial settings.
         ecfrcs = EnrichClientFromRemoteConfigStrategy(
             client_factory=lambda client: self.client)
         ecfrcs.process(self.app.config['stormpath'].store)

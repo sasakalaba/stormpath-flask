@@ -37,6 +37,31 @@ class StormpathTestCase(TestCase):
         self.name = 'flask-stormpath-tests-%s' % uuid4().hex
         self.application = bootstrap_app(self.client, self.name)
         self.app = bootstrap_flask_app(self.application)
+
+        # Create social directories if necessary.
+        if self.app.config['STORMPATH_ENABLE_FACEBOOK']:
+            facebook_provider = {
+                'client_id': os.environ.get('FACEBOOK_API_ID'),
+                'client_secret': os.environ.get('FACEBOOK_API_SECRET'),
+                'provider_id': Provider.FACEBOOK,
+            }
+            self.create_social_directory(
+                social_name='facebook', provider=facebook_provider)
+
+        if self.app.config['STORMPATH_ENABLE_GOOGLE']:
+            google_provider = {
+                'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+                'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+                'redirect_uri': (
+                    ''.join(
+                        (os.environ.get('ROOT_URL'), ':',
+                         os.environ.get('PORT'))) + '/google'),
+                'provider_id': Provider.GOOGLE,
+            }
+
+            self.create_social_directory(
+                social_name='google', provider=google_provider)
+
         self.manager = StormpathManager(self.app)
 
         # html and json header settings
@@ -86,24 +111,22 @@ class StormpathTestCase(TestCase):
     def create_social_directory(self, social_name=None, provider=None):
         # Creates a stormpath social directory.
         social_dir = (
-            self.app.stormpath_manager.client.directories.create({
-                'name': self.name + ' - ' + social_name,
+            self.application._client.directories.create({
+                'name': self.application.name + '-' + social_name,
                 'provider': provider
             })
         )
 
         # Now we'll map the new directory to our application.
-        self.app.stormpath_manager.application.account_store_mappings.create(
+        self.application.account_store_mappings.create(
             {
-                'application': self.app.stormpath_manager.application,
+                'application': self.application,
                 'account_store': social_dir,
                 'list_index': 99,
                 'is_default_account_store': False,
                 'is_default_group_store': False,
             }
         )
-
-        self.reinit_app()
 
 
 class SignalReceiver(object):

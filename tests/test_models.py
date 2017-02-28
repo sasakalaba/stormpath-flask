@@ -310,24 +310,8 @@ class SocialMethodsTestMixin(object):
         with self.app.app_context() and self.app.test_request_context(
                 ':%s' % environ.get('PORT')):
             if not self.search_query.items:
-                social_dir = (
-                    self.app.stormpath_manager.client.directories.create({
-                        'name': self.social_dir_name,
-                        'provider': self.provider
-                    })
-                )
-
-                # Now we'll map the new directory to our application.
-                (
-                    self.app.stormpath_manager.application.
-                    account_store_mappings.create({
-                        'application': self.app.stormpath_manager.application,
-                        'account_store': social_dir,
-                        'list_index': 99,
-                        'is_default_account_store': False,
-                        'is_default_group_store': False,
-                    })
-                )
+                self.create_social_directory(
+                    social_name=self.social_name, provider=self.provider)
 
             # Ensure that from_<social> will raise a StormpathError if access
             # token is invalid and social directory present.
