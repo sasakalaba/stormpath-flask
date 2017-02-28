@@ -25,7 +25,9 @@ from stormpath_config.strategies import (
     ValidateClientConfigStrategy,
     EnrichClientFromRemoteConfigStrategy,
     EnrichIntegrationFromRemoteConfigStrategy,
-    MoveAPIKeyToClientAPIKeyStrategy)
+    MoveAPIKeyToClientAPIKeyStrategy,
+    ExtendConfigStrategy,
+    MoveStormpathSettingsToStormpathConfigStrategy)
 
 from werkzeug.local import LocalProxy
 from .context_processors import user_context_processor
@@ -155,7 +157,8 @@ class StormpathManager(object):
                 LoadAPIKeyConfigStrategy("./apiKey.properties"),
                 LoadFileConfigStrategy("./stormpath.yaml"),
                 LoadFileConfigStrategy("./stormpath.json"),
-                LoadEnvConfigStrategy(prefix='STORMPATH')
+                LoadEnvConfigStrategy(prefix='STORMPATH'),
+                ExtendConfigStrategy(extend_with={})
             ],
             post_processing_strategies=[
                 LoadAPIKeyFromConfigStrategy(),
@@ -169,7 +172,7 @@ class StormpathManager(object):
 
         # Move any settings with 'STORMPATH' prefix from main config to the
         # stormpath config object.
-        move_stormpath_settings = MoveStormpathSettingsToStormpathConfig()
+        move_stormpath_settings = MoveStormpathSettingsToStormpathConfigStrategy()
         move_stormpath_settings.process(config)
 
         # Create our custom user agent.  This allows us to see which
