@@ -1,9 +1,6 @@
 """Tests for our settings stuff."""
 
 
-from datetime import timedelta
-from unittest import skip
-from flask_stormpath.errors import ConfigurationError
 from flask_stormpath.settings import (
     StormpathSettings)
 from flask_stormpath import __version__ as stormpath_flask_version
