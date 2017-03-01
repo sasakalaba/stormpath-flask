@@ -27,7 +27,7 @@ from stormpath_config.strategies import (
     EnrichIntegrationFromRemoteConfigStrategy,
     MoveAPIKeyToClientAPIKeyStrategy,
     ExtendConfigStrategy,
-    MoveStormpathSettingsToStormpathConfigStrategy)
+    MoveSettingsToConfigStrategy)
 
 from werkzeug.local import LocalProxy
 from .context_processors import user_context_processor
@@ -148,6 +148,10 @@ class StormpathManager(object):
         """
         # Basic Stormpath credentials and configuration.
         web_config_file = config.get('STORMPATH_CONFIG_PATH')
+
+        # Set default settings needed to init stormpath-flask.
+        self.set_default_settings(config)
+
         config_loader = ConfigLoader(
             load_strategies=[
                 LoadFileConfigStrategy(web_config_file),
@@ -158,7 +162,8 @@ class StormpathManager(object):
                 LoadFileConfigStrategy("./stormpath.yaml"),
                 LoadFileConfigStrategy("./stormpath.json"),
                 LoadEnvConfigStrategy(prefix='STORMPATH'),
-                ExtendConfigStrategy(extend_with={})
+                ExtendConfigStrategy(extend_with={}), # FIXME: This is still unimplemented.
+                MoveSettingsToConfigStrategy(config=config)
             ],
             post_processing_strategies=[
                 LoadAPIKeyFromConfigStrategy(),
@@ -166,14 +171,6 @@ class StormpathManager(object):
             ],
             validation_strategies=[ValidateClientConfigStrategy()])
         config['stormpath'] = StormpathSettings(config_loader.load())
-
-        # Set default settings needed to init stormpath-flask.
-        self.set_default_settings(config)
-
-        # Move any settings with 'STORMPATH' prefix from main config to the
-        # stormpath config object.
-        move_stormpath_settings = MoveStormpathSettingsToStormpathConfigStrategy()
-        move_stormpath_settings.process(config)
 
         # Create our custom user agent.  This allows us to see which
         # version of this SDK are out in the wild!
