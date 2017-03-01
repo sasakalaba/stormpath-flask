@@ -7,6 +7,22 @@ Change Log
 All library changes, in descending order.
 
 
+Version 0.5.0
+-------------
+
+**Released March 1, 2017.**
+
+- Refactored views from function based to class based.
+- Adding VerifyEmail and Me view.
+- Adding request parsing.
+- Upgrading social login.
+- Upgraded CSRF protection.
+- Adding new configuration loading.
+- Replaced settings with 'STORMPATH' prefix to one from our Stormpath Config
+  object.
+- Adding dynamic forms.
+
+
 Version 0.4.8
 -------------
 
